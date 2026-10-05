@@ -21,7 +21,7 @@ export default function SaveJourneySection() {
 
   return (
     <>
-      <div className="card p-6 md:p-8 rounded-3xl bg-gradient-to-br from-[#173B5F] via-[#1A456E] to-[#16856A] text-white shadow-xl relative overflow-hidden my-8 animate-fade-in border border-white/10">
+      <div className="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-[#173B5F] via-[#1A456E] to-[#16856A] text-white shadow-xl relative overflow-hidden my-8 animate-fade-in border border-white/10">
         {/* Background glow accent */}
         <div className="absolute -right-10 -bottom-10 w-48 h-48 rounded-full bg-[#1EB993]/20 blur-3xl pointer-events-none" />
         <div className="absolute -left-10 -top-10 w-48 h-48 rounded-full bg-[#D99A24]/10 blur-3xl pointer-events-none" />
