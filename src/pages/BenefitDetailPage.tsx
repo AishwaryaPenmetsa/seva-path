@@ -12,7 +12,7 @@ import { StatusBadge, EffortIndicator, AppModeBadge, JourneyTimeline, ProgressBa
 import BenefitJourneyGraphic from '../components/BenefitJourneyGraphic';
 import type { JourneyStage } from '../components/BenefitJourneyGraphic';
 import { getBenefitById } from '../data/benefits';
-import type { TrackedApplication } from '../types';
+import { getStage, STARTED, VERIFICATION } from '../services/applicationJourney';
 import {
   ChevronLeft, ChevronRight, Check, AlertTriangle,
   FileText, Clock, Monitor, ExternalLink, Shield,
@@ -21,6 +21,7 @@ import {
   CheckCircle2, AlertCircle
 } from 'lucide-react';
 import * as storage from '../services/storage';
+import { continueToApplication, createTrackedApplication } from '../services/startApplication';
 
 export default function BenefitDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -62,10 +63,11 @@ export default function BenefitDetailPage() {
   const allDocsReady = readyDocs.length === b.documents.length && b.documents.length > 0;
   const prepProgress = b.documents.length > 0 ? readyDocs.length / b.documents.length : 0;
 
-  // Existing application for this benefit
+  // Existing application for this benefit (stage is user-managed after "started")
   const existingApp = applications.find((a) => a.benefitId === b.id);
-  const isSubmitted = existingApp ? ['submitted', 'verification', 'approved', 'rejected', 'action-required'].includes(existingApp.status) : false;
-  const isFormCompleted = existingApp ? ['form-completed', 'submitted', 'verification', 'approved', 'rejected', 'action-required'].includes(existingApp.status) : false;
+  const appStage = existingApp ? getStage(existingApp) : 0;
+  const isSubmitted = appStage >= VERIFICATION;
+  const isFormCompleted = appStage >= STARTED;
 
   // Compute current journey stage
   const currentStage: JourneyStage = useMemo(() => {
@@ -74,23 +76,29 @@ export default function BenefitDetailPage() {
     return 'prepare';
   }, [isSubmitted, isFormCompleted, allDocsReady]);
 
+  // Continue to application: opens official portal in new tab, tracks app, goes to /applications
+  const handleContinue = () => {
+    continueToApplication({
+      benefit: b,
+      existing: existingApp,
+      addApplication,
+      updateApplication,
+      navigate,
+    });
+  };
+
   // Compute next action label and handler
-  const { nextActionLabel, nextActionHandler } = useMemo(() => {
+  const { nextActionLabel, nextActionHandler } = (() => {
     if (isSubmitted) {
       return {
-        nextActionLabel: language === 'te' ? 'మీ దరఖాస్తు ట్రాక్ చేయండి' : 'Track your application status',
+        nextActionLabel: language === 'te' ? 'మీ దరఖాస్తు ట్రాక్ చేయండి' : 'Track your application',
         nextActionHandler: () => navigate('/applications'),
       };
     }
     if (allDocsReady) {
       return {
         nextActionLabel: language === 'te' ? 'దరఖాస్తుకు కొనసాగండి' : 'Continue to application',
-        nextActionHandler: () => {
-          if (b.officialApplicationUrl) {
-            // Create/update tracked application and open official portal
-            handleStartApplication('form-completed');
-          }
-        },
+        nextActionHandler: handleContinue,
       };
     }
     const remaining = b.documents.length - readyDocs.length;
@@ -100,59 +108,14 @@ export default function BenefitDetailPage() {
         : `Prepare ${remaining} remaining document${remaining !== 1 ? 's' : ''}`,
       nextActionHandler: () => navigate(`/documents/${b.id}`),
     };
-  }, [isSubmitted, allDocsReady, readyDocs.length, b.documents.length, language, b.id]);
+  })();
 
-  const handleStartApplication = (initialStatus: 'discovered' | 'preparing' | 'form-completed' = 'discovered') => {
-    // If already tracked, don't duplicate
-    if (existingApp) {
-      if (initialStatus === 'form-completed') {
-        // Update status and open official URL
-        updateApplication(existingApp.id, {
-          status: 'form-completed',
-          nextAction: language === 'te' ? 'అధికారిక పోర్టల్‌లో సమర్పించండి' : 'Submit on the official portal',
-          nextActionTe: 'అధికారిక పోర్టల్‌లో సమర్పించండి',
-          timeline: existingApp.timeline.map((entry, i) => ({
-            ...entry,
-            completed: i <= 2,
-            current: i === 3,
-            date: i === 2 ? new Date().toISOString().split('T')[0] : entry.date,
-          })),
-        });
-        if (b.officialApplicationUrl) {
-          window.open(b.officialApplicationUrl, '_blank', 'noopener,noreferrer');
-        }
-        navigate('/applications');
-      } else {
-        navigate('/applications');
-      }
-      return;
-    }
-
-    const app: TrackedApplication = {
-      id: `app-${b.id}-${Date.now()}`,
-      benefitId: b.id,
-      benefitName: b.name,
-      benefitNameTe: b.nameTe,
-      category: b.category,
-      status: initialStatus,
-      startedDate: new Date().toISOString().split('T')[0],
-      timeline: [
-        { step: t('tracker.discovered'), stepTe: 'ప్రయోజనం కనుగొనబడింది', date: new Date().toISOString().split('T')[0], completed: true, current: false },
-        { step: t('tracker.docsPrepared'), stepTe: 'పత్రాలు సిద్ధమయ్యాయి', completed: initialStatus !== 'discovered', current: initialStatus === 'discovered' || initialStatus === 'preparing', date: allDocsReady ? new Date().toISOString().split('T')[0] : undefined },
-        { step: t('tracker.formCompleted'), stepTe: 'ఫారమ్ పూర్తయింది', completed: initialStatus === 'form-completed', current: initialStatus === 'form-completed', date: initialStatus === 'form-completed' ? new Date().toISOString().split('T')[0] : undefined },
-        { step: t('tracker.submitted'), stepTe: 'దరఖాస్తు సమర్పించబడింది', completed: false, current: false },
-        { step: t('tracker.verification'), stepTe: 'ధృవీకరణ', completed: false, current: false },
-        { step: t('tracker.decision'), stepTe: 'నిర్ణయం', completed: false, current: false },
-      ],
-      nextAction: initialStatus === 'form-completed'
-        ? (language === 'te' ? 'అధికారిక పోర్టల్‌లో సమర్పించండి' : 'Submit on the official portal')
-        : (language === 'te' ? 'పత్రాలు సిద్ధం చేయండి' : 'Prepare your documents'),
-      nextActionTe: initialStatus === 'form-completed' ? 'అధికారిక పోర్టల్‌లో సమర్పించండి' : 'పత్రాలు సిద్ధం చేయండి',
-    };
-    addApplication(app);
-
-    if (initialStatus === 'form-completed' && b.officialApplicationUrl) {
-      window.open(b.officialApplicationUrl, '_blank', 'noopener,noreferrer');
+  // "Start Application Track" (documents not ready yet): track at the "prepare documents" step
+  const handleStartApplication = () => {
+    if (!existingApp) {
+      const app = createTrackedApplication(b, 1);
+      storage.addApplication(app);
+      addApplication(app);
     }
     navigate('/applications');
   };
@@ -294,7 +257,7 @@ export default function BenefitDetailPage() {
                   <CheckCircle2 size={20} className="text-[#16856A] mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-bold text-[#126D57]">
-                      {language === 'te' ? 'అన్ని పత్రాలు సిద్ధం!' : 'All documents are ready!'}
+                      {language === 'te' ? 'దరఖాస్తుకు సిద్ధం — అన్ని పత్రాలు సిద్ధం!' : 'Ready to apply — all documents are ready!'}
                     </p>
                     <p className="text-xs text-[#126D57]/80 mt-0.5">
                       {language === 'te'
@@ -361,7 +324,7 @@ export default function BenefitDetailPage() {
 
                 {allDocsReady && (
                   <button
-                    onClick={() => handleStartApplication('form-completed')}
+                    onClick={handleContinue}
                     className="btn btn-success flex-1 font-semibold shadow-lg shadow-[#16856A]/25 group"
                   >
                     <Send size={16} />
@@ -376,12 +339,17 @@ export default function BenefitDetailPage() {
             <div className="card p-6 rounded-3xl">
               <h2 className="text-base font-bold text-[#173B5F] mb-4">{t('detail.applicationJourney')}</h2>
               <JourneyTimeline
-                steps={b.applicationSteps.map((s, i) => ({
-                  label: `${String(s.step).padStart(2, '0')} ${language === 'te' ? s.titleTe : s.title}`,
-                  completed: false,
-                  current: i === 0,
-                }))}
+                steps={[
+                  { label: `01 ${language === 'te' ? 'వివరాలు తనిఖీ చేయండి' : 'Check details'}`, completed: true, current: false },
+                  { label: `02 ${language === 'te' ? 'పత్రాలు సిద్ధం చేయండి' : 'Prepare documents'}`, completed: allDocsReady, current: !allDocsReady },
+                  { label: `03 ${language === 'te' ? 'అధికారికంగా దరఖాస్తు చేయండి' : 'Apply officially'}`, completed: isSubmitted, current: allDocsReady && !isSubmitted },
+                ]}
               />
+              <p className="text-[11px] text-[#9AA5B1] mt-4 leading-relaxed">
+                {language === 'te'
+                  ? 'SevaPath దరఖాస్తు ప్రయాణాన్ని సిద్ధం చేసి నావిగేట్ చేయడంలో సహాయపడుతుంది. తుది సమర్పణ, ధృవీకరణ మరియు నిర్ణయాలు అధికారిక ప్రభుత్వ అధికారం చేతిలో ఉంటాయి.'
+                  : 'SevaPath helps you prepare and navigate the application journey. Final submission, verification and decisions are handled by the official government authority.'}
+              </p>
             </div>
           </div>
 
@@ -399,7 +367,7 @@ export default function BenefitDetailPage() {
               </button>
             ) : allDocsReady ? (
               <button 
-                onClick={() => handleStartApplication('form-completed')} 
+                onClick={handleContinue} 
                 className="btn btn-success w-full py-4 text-base shadow-lg shadow-[#16856A]/25 group"
               >
                 <Send size={18} />

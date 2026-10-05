@@ -9,6 +9,7 @@ import { ProgressBar, DemoBadge } from '../components/UI';
 import DocumentStack3D from '../components/DocumentStack3D';
 import { getBenefitById } from '../data/benefits';
 import * as storage from '../services/storage';
+import { continueToApplication } from '../services/startApplication';
 import {
   ChevronLeft, Check, X, Upload, FileText,
   ChevronDown, ChevronUp, ExternalLink, Info, AlertTriangle,
@@ -18,7 +19,7 @@ import {
 export default function DocumentsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t, language } = useApp();
+  const { t, language, addApplication, updateApplication, applications } = useApp();
   const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
   const [, forceUpdate] = useState(0);
 
@@ -168,6 +169,28 @@ export default function DocumentsPage() {
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-6">
+          <button
+            id="docs-continue-to-application"
+            disabled={readyCount !== b.documents.length}
+            onClick={() => continueToApplication({
+              benefit: b,
+              existing: applications.find((a) => a.benefitId === b.id),
+              addApplication,
+              updateApplication,
+              navigate,
+            })}
+            className="btn btn-success w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span>{language === 'te' ? 'దరఖాస్తుకు కొనసాగండి' : 'Continue to application'}</span>
+          </button>
+          {readyCount !== b.documents.length && (
+            <p className="text-xs text-[#66727E] mt-2 text-center">
+              {language === 'te' ? 'కొనసాగడానికి అన్ని పత్రాలను సిద్ధంగా గుర్తించండి.' : 'Mark all documents as ready to continue.'}
+            </p>
+          )}
         </div>
 
       </div>

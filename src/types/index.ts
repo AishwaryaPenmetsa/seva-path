@@ -135,7 +135,8 @@ export type ApplicationStatus =
   | 'verification'
   | 'approved'
   | 'rejected'
-  | 'action-required';
+  | 'action-required'
+  | 'decision-received';
 
 export interface TrackedApplication {
   id: string;
@@ -146,6 +147,10 @@ export interface TrackedApplication {
   status: ApplicationStatus;
   startedDate: string;
   timeline: ApplicationTimelineEntry[];
+  /** Index (0-7) of the current journey step; 7 = journey complete. User-managed beyond step 3. */
+  stage?: number;
+  /** Dates (YYYY-MM-DD) the user/system reached each stage index. */
+  stageDates?: Record<number, string>;
   nextAction?: string;
   nextActionTe?: string;
   reminder?: string;
