@@ -16,13 +16,14 @@ import FormExplainerPage from './pages/FormExplainerPage';
 import ApplicationsPage from './pages/ApplicationsPage';
 import FindPage from './pages/FindPage';
 import ProfilePage from './pages/ProfilePage';
+import AskSevaPath from './components/AskSevaPath';
 
 function AppShell() {
   const location = useLocation();
   const isHome = location.pathname === '/';
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col relative">
       {/* Background layer — cinematic on home, warm on other pages */}
       {isHome ? <CinematicBackground /> : <SevaPathBackground />}
 
@@ -42,6 +43,9 @@ function AppShell() {
           <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </main>
+
+      {/* Ask SevaPath Assistant Floating Component */}
+      <AskSevaPath />
     </div>
   );
 }

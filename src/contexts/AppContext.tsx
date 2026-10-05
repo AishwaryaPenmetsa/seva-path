@@ -8,6 +8,7 @@ import type {
   UserProfile,
   HelpMapResults,
   TrackedApplication,
+  AuthUser,
 } from '../types';
 import { translations, type TranslationKey } from '../i18n/translations';
 import * as storage from '../services/storage';
@@ -43,6 +44,11 @@ interface AppContextValue {
   profileName: string;
   setProfileName: (name: string) => void;
 
+  // Auth User
+  authUser: AuthUser | null;
+  login: (email: string, name?: string) => AuthUser;
+  logout: () => void;
+
   // Clear all
   clearAllData: () => void;
 }
@@ -56,6 +62,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [applications, setApplications] = useState<TrackedApplication[]>(storage.getApplications());
   const [savedBenefits, setSavedBenefits] = useState<string[]>(storage.getSavedBenefits());
   const [profileName, setProfileNameState] = useState<string>(storage.getProfileName());
+  const [authUser, setAuthUserState] = useState<AuthUser | null>(storage.getAuthUser());
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
@@ -133,6 +140,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     storage.setProfileName(name);
   }, []);
 
+  const login = useCallback((email: string, name?: string): AuthUser => {
+    const displayName = name && name.trim() ? name.trim() : email.split('@')[0] || 'Citizen';
+    const user: AuthUser = {
+      email,
+      name: displayName,
+      isLoggedIn: true,
+      createdAt: new Date().toISOString(),
+    };
+    setAuthUserState(user);
+    storage.setAuthUser(user);
+    setProfileNameState(displayName);
+    storage.setProfileName(displayName);
+    return user;
+  }, []);
+
+  const logout = useCallback(() => {
+    setAuthUserState(null);
+    storage.setAuthUser(null);
+  }, []);
+
   const clearAllData = useCallback(() => {
     storage.clearAllData();
     setLanguageState('en');
@@ -141,6 +168,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setApplications([]);
     setSavedBenefits([]);
     setProfileNameState('');
+    setAuthUserState(null);
   }, []);
 
   return (
@@ -162,6 +190,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isBenefitSaved,
       profileName,
       setProfileName,
+      authUser,
+      login,
+      logout,
       clearAllData,
     }}>
       {children}

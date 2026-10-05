@@ -197,3 +197,12 @@ export interface Reminder {
   scheduledFor: string;
   isRead: boolean;
 }
+
+// Authentication user for journey saving
+export interface AuthUser {
+  name: string;
+  email: string;
+  isLoggedIn: boolean;
+  createdAt: string;
+}
+

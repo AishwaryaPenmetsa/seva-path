@@ -12,6 +12,8 @@ import {
   Sparkles, Check
 } from 'lucide-react';
 
+import SaveJourneySection from '../components/SaveJourneySection';
+
 export default function ProfilePage() {
   const {
     t, language, setLanguage,
@@ -181,6 +183,9 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        {/* Save Journey / Auth Status */}
+        <SaveJourneySection />
 
         {/* Clear Data Card */}
         <div className="card p-6 rounded-3xl border border-[#C94A4A]/30 bg-white">

@@ -23,6 +23,7 @@ import {
   Bell, FileText, Check, Info, Trash2,
   Sparkles, ShieldCheck, Calendar
 } from 'lucide-react';
+import SaveJourneySection from '../components/SaveJourneySection';
 
 export default function ApplicationsPage() {
   const { t, language, applications, addApplication, updateApplication, removeApplication } = useApp();
@@ -325,6 +326,9 @@ export default function ApplicationsPage() {
             );
           })}
         </div>
+
+        {/* Final CTA: Save My SevaPath Journey */}
+        <SaveJourneySection />
 
       </div>
     </div>

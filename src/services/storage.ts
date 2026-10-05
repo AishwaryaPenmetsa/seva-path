@@ -19,6 +19,7 @@ const KEYS = {
   SAVED_BENEFITS: 'sevapath_saved_benefits',
   PROFILE_NAME: 'sevapath_profile_name',
   QUESTIONNAIRE_STEP: 'sevapath_questionnaire_step',
+  AUTH_USER: 'sevapath_auth_user',
 } as const;
 
 function get<T>(key: string, fallback: T): T {
@@ -155,6 +156,19 @@ export function getQuestionnaireStep(): number {
 
 export function setQuestionnaireStep(step: number): void {
   set(KEYS.QUESTIONNAIRE_STEP, step);
+}
+
+// Auth User
+export function getAuthUser(): import('../types').AuthUser | null {
+  return get<import('../types').AuthUser | null>(KEYS.AUTH_USER, null);
+}
+
+export function setAuthUser(user: import('../types').AuthUser | null): void {
+  if (user === null) {
+    localStorage.removeItem(KEYS.AUTH_USER);
+  } else {
+    set(KEYS.AUTH_USER, user);
+  }
 }
 
 // Clear all
