@@ -709,7 +709,7 @@ export const demoBenefits: Benefit[] = [
     ],
     officialSource: 'Sample official source — demonstration data',
     officialSourceTe: 'నమూనా అధికారిక వనరు — ప్రదర్శన డేటా',
-    officialApplicationUrl: '#demo',
+    officialApplicationUrl: 'https://scholarships.gov.in/',
     department: 'Education Department (Sample)',
     departmentTe: 'విద్యా శాఖ (నమూనా)',
     lastVerified: 'Demonstration data',
