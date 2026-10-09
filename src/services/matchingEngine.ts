@@ -1,82 +1,229 @@
 // ============================================================
 // SevaPath — Matching Engine
+// Precise rule-based civic eligibility engine
 // ============================================================
 
 import type { UserProfile, MatchResult, HelpMapResults, MatchStatus, Benefit } from '../types';
 import { demoBenefits } from '../data/benefits';
 
-function matchesCriterion(profile: UserProfile, matchKey: string): boolean {
+interface CriterionEvaluation {
+  matched: boolean;
+  isMissing: boolean;
+  reason?: string;
+}
+
+function evaluateCriterion(profile: UserProfile, matchKey: string, field: string): CriterionEvaluation {
   switch (matchKey) {
     case 'student':
-      return profile.occupation === 'student';
+      if (!profile.occupation) return { matched: false, isMissing: true };
+      return {
+        matched: profile.occupation === 'student',
+        isMissing: false,
+        reason: profile.occupation !== 'student' ? 'Requires student status' : undefined,
+      };
+
     case 'post-matric':
-      return ['intermediate', 'undergraduate', 'postgraduate', 'diploma'].includes(profile.educationLevel || '');
+      if (!profile.educationLevel) return { matched: false, isMissing: true };
+      const isPostMatric = ['intermediate', 'undergraduate', 'postgraduate', 'diploma'].includes(profile.educationLevel);
+      return {
+        matched: isPostMatric,
+        isMissing: false,
+        reason: !isPostMatric ? 'Requires post-matric education (Intermediate/Diploma/Degree)' : undefined,
+      };
+
     case 'higher-edu':
-      return ['undergraduate', 'postgraduate'].includes(profile.educationLevel || '');
+      if (!profile.educationLevel) return { matched: false, isMissing: true };
+      const isHigher = ['undergraduate', 'postgraduate'].includes(profile.educationLevel);
+      return {
+        matched: isHigher,
+        isMissing: false,
+        reason: !isHigher ? 'Requires higher education (UG/PG)' : undefined,
+      };
+
     case 'income-low':
-      return ['dont-know', 'below-1', '1-2.5', '2.5-5'].includes(profile.incomeRange || '');
+      // "don't know" income must NOT count as a match; use needs-more-info
+      if (!profile.incomeRange || profile.incomeRange === 'dont-know') {
+        return { matched: false, isMissing: true, reason: 'Family income needs to be specified' };
+      }
+      const isLowIncome = ['below-1', '1-2.5', '2.5-5'].includes(profile.incomeRange);
+      return {
+        matched: isLowIncome,
+        isMissing: false,
+        reason: !isLowIncome ? 'Income exceeds low-income threshold' : undefined,
+      };
+
     case 'job-seeker':
-      return profile.occupation === 'looking-for-work' || profile.needs.includes('job');
+      if (!profile.occupation && (!profile.needs || profile.needs.length === 0)) {
+        return { matched: false, isMissing: true };
+      }
+      const isJobSeeker = profile.occupation === 'looking-for-work' || (profile.needs && profile.needs.includes('job'));
+      return {
+        matched: isJobSeeker,
+        isMissing: false,
+        reason: !isJobSeeker ? 'Requires looking for work or job training need' : undefined,
+      };
+
     case 'age-youth':
-      return (profile.age || 0) >= 18 && (profile.age || 0) <= 35;
+      if (profile.age === undefined) return { matched: false, isMissing: true };
+      const isYouth = profile.age >= 18 && profile.age <= 35;
+      return {
+        matched: isYouth,
+        isMissing: false,
+        reason: !isYouth ? `Age must be between 18 and 35 (current: ${profile.age})` : undefined,
+      };
+
     case 'senior':
-      return (profile.age || 0) >= 60;
+      if (profile.age === undefined) return { matched: false, isMissing: true };
+      const isSenior = profile.age >= 60;
+      return {
+        matched: isSenior,
+        isMissing: false,
+        reason: !isSenior ? `Age must be 60 or above (current: ${profile.age})` : undefined,
+      };
+
     case 'looking-for-work':
-      return profile.occupation === 'looking-for-work';
+      if (!profile.occupation) return { matched: false, isMissing: true };
+      return {
+        matched: profile.occupation === 'looking-for-work',
+        isMissing: false,
+        reason: profile.occupation !== 'looking-for-work' ? 'Requires job-seeking status' : undefined,
+      };
+
     case 'housing-need':
-      return profile.needs.includes('housing');
+      if (!profile.needs || profile.needs.length === 0) return { matched: false, isMissing: true };
+      return {
+        matched: profile.needs.includes('housing'),
+        isMissing: false,
+        reason: !profile.needs.includes('housing') ? 'Requires housing assistance need' : undefined,
+      };
+
     case 'farmer':
-      return profile.occupation === 'farmer';
+      if (!profile.occupation) return { matched: false, isMissing: true };
+      return {
+        matched: profile.occupation === 'farmer',
+        isMissing: false,
+        reason: profile.occupation !== 'farmer' ? 'Requires farmer occupation' : undefined,
+      };
+
     case 'small-farmer':
-      return ['small-holder', 'landless'].includes(profile.farmingSituation || '');
+      if (!profile.farmingSituation) return { matched: false, isMissing: true };
+      const isSmall = ['small-holder', 'landless'].includes(profile.farmingSituation);
+      return {
+        matched: isSmall,
+        isMissing: false,
+        reason: !isSmall ? 'Requires small or landless farmer category' : undefined,
+      };
+
     case 'health-need':
-      return profile.needs.includes('health');
+      if (!profile.needs || profile.needs.length === 0) return { matched: false, isMissing: true };
+      return {
+        matched: profile.needs.includes('health'),
+        isMissing: false,
+        reason: !profile.needs.includes('health') ? 'Requires health assistance need' : undefined,
+      };
+
     case 'disability':
-      return profile.additionalCircumstances.includes('disability');
+      return {
+        matched: profile.additionalCircumstances.includes('disability'),
+        isMissing: false,
+        reason: !profile.additionalCircumstances.includes('disability') ? 'Requires person with disability certification' : undefined,
+      };
+
     case 'pregnant':
-      return profile.additionalCircumstances.includes('pregnant');
+      return {
+        matched: profile.additionalCircumstances.includes('pregnant'),
+        isMissing: false,
+        reason: !profile.additionalCircumstances.includes('pregnant') ? 'Requires pregnant/lactating mother status' : undefined,
+      };
+
     case 'single-parent':
-      return profile.additionalCircumstances.includes('single-parent');
+      return {
+        matched: profile.additionalCircumstances.includes('single-parent'),
+        isMissing: false,
+        reason: !profile.additionalCircumstances.includes('single-parent') ? 'Requires single parent status' : undefined,
+      };
+
     case 'widow':
-      return profile.additionalCircumstances.includes('widow');
+      return {
+        matched: profile.additionalCircumstances.includes('widow'),
+        isMissing: false,
+        reason: !profile.additionalCircumstances.includes('widow') ? 'Requires widow status' : undefined,
+      };
+
     case 'business-owner':
-      return profile.occupation === 'business-owner';
+      if (!profile.occupation) return { matched: false, isMissing: true };
+      return {
+        matched: profile.occupation === 'business-owner',
+        isMissing: false,
+        reason: profile.occupation !== 'business-owner' ? 'Requires business owner or entrepreneur status' : undefined,
+      };
+
     case 'business-need':
-      return profile.needs.includes('business');
+      if (!profile.needs || profile.needs.length === 0) return { matched: false, isMissing: true };
+      return {
+        matched: profile.needs.includes('business'),
+        isMissing: false,
+        reason: !profile.needs.includes('business') ? 'Requires business/enterprise support need' : undefined,
+      };
+
     case 'women-need':
-      return profile.needs.includes('women-family');
+      if (!profile.needs || profile.needs.length === 0) return { matched: false, isMissing: true };
+      return {
+        matched: profile.needs.includes('women-family'),
+        isMissing: false,
+        reason: !profile.needs.includes('women-family') ? 'Requires women and family support need' : undefined,
+      };
+
     default:
-      return false;
+      return { matched: false, isMissing: false };
   }
 }
 
-function matchBenefit(profile: UserProfile, benefit: Benefit): MatchResult {
+export function matchBenefit(profile: UserProfile, benefit: Benefit): MatchResult {
   const matchedCriteria: string[] = [];
   const missingInfo: string[] = [];
-  let matchCount = 0;
+  const unmatchedCriteria: string[] = [];
 
-  for (const criterion of benefit.eligibilityCriteria) {
-    if (matchesCriterion(profile, criterion.matchKey)) {
-      matchCount++;
-      matchedCriteria.push(criterion.label);
+  // Check state restriction if specified on scheme
+  if (benefit.state) {
+    if (!profile.state) {
+      missingInfo.push(`State of residence required (${benefit.state})`);
+    } else if (profile.state.toLowerCase() === benefit.state.toLowerCase()) {
+      matchedCriteria.push(`Resident of ${benefit.state}`);
     } else {
-      // Check if user hasn't provided relevant info vs definitely doesn't match
-      const fieldValue = getFieldValue(profile, criterion.field);
-      if (fieldValue === undefined || fieldValue === '' || (Array.isArray(fieldValue) && fieldValue.length === 0)) {
-        missingInfo.push(criterion.label);
-      }
+      unmatchedCriteria.push(`Only available to residents of ${benefit.state} (current: ${profile.state})`);
     }
   }
 
-  const totalCriteria = benefit.eligibilityCriteria.length;
+  // Check all criteria defined in benefit
+  for (const criterion of benefit.eligibilityCriteria) {
+    const res = evaluateCriterion(profile, criterion.matchKey, criterion.field);
+    if (res.matched) {
+      matchedCriteria.push(criterion.label);
+    } else if (res.isMissing) {
+      missingInfo.push(res.reason ? `${criterion.label}: ${res.reason}` : criterion.label);
+    } else {
+      unmatchedCriteria.push(res.reason || criterion.label);
+    }
+  }
+
   let status: MatchStatus;
 
-  if (matchCount === totalCriteria) {
+  // If hard-failed any criteria that don't match (and are not missing), not a match
+  if (unmatchedCriteria.length > 0 && matchedCriteria.length === 0) {
+    status = 'no-match';
+  } else if (unmatchedCriteria.length > 0) {
+    // Some matched, but some definitely do not match
+    status = 'no-match';
+  } else if (missingInfo.length > 0 && matchedCriteria.length > 0) {
+    // Matched some, but needs more information (e.g. unknown income)
+    status = 'more-info';
+  } else if (missingInfo.length > 0) {
+    // Profile doesn't have enough info yet
+    status = 'more-info';
+  } else if (matchedCriteria.length > 0) {
+    // All relevant criteria matched without contradictions
     status = 'likely';
-  } else if (matchCount > 0 && missingInfo.length > 0) {
-    status = 'more-info';
-  } else if (matchCount > 0) {
-    status = 'more-info';
   } else {
     status = 'no-match';
   }
@@ -86,23 +233,8 @@ function matchBenefit(profile: UserProfile, benefit: Benefit): MatchResult {
     status,
     matchedCriteria,
     missingInfo,
+    unmatchedCriteria,
   };
-}
-
-function getFieldValue(profile: UserProfile, field: string): unknown {
-  switch (field) {
-    case 'occupation': return profile.occupation;
-    case 'age': return profile.age;
-    case 'state': return profile.state;
-    case 'needs': return profile.needs;
-    case 'educationLevel': return profile.educationLevel;
-    case 'employmentSituation': return profile.employmentSituation;
-    case 'farmingSituation': return profile.farmingSituation;
-    case 'businessSituation': return profile.businessSituation;
-    case 'income': return profile.incomeRange;
-    case 'additionalCircumstances': return profile.additionalCircumstances;
-    default: return undefined;
-  }
 }
 
 export function matchBenefits(profile: UserProfile): HelpMapResults {
@@ -112,7 +244,7 @@ export function matchBenefits(profile: UserProfile): HelpMapResults {
   const needsMoreInfo = results.filter((r) => r.status === 'more-info');
   const otherPossible = results.filter((r) => r.status === 'no-match' && r.matchedCriteria.length > 0);
 
-  // Sort by number of matched criteria
+  // Sort by number of matched criteria descending
   const sortByMatches = (a: MatchResult, b: MatchResult) =>
     b.matchedCriteria.length - a.matchedCriteria.length;
 
@@ -136,6 +268,7 @@ export function getBenefitsByNeed(categoryId: string): MatchResult[] {
       benefit,
       status: 'more-info' as MatchStatus,
       matchedCriteria: ['Category match'],
-      missingInfo: ['Complete the questionnaire for personalized matching'],
+      missingInfo: ['Complete the questionnaire for personalized eligibility check'],
+      unmatchedCriteria: [],
     }));
 }

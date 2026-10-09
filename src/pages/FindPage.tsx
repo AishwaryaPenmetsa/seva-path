@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { CategoryCard } from '../components/UI';
 import BenefitCard from '../components/BenefitCard';
+import JourneyNextStepBanner from '../components/JourneyNextStepBanner';
 import { categories } from '../data/benefits';
 import { getBenefitsByNeed } from '../services/matchingEngine';
 import {
@@ -44,17 +45,19 @@ export default function FindPage() {
             <ChevronLeft size={16} /> {language === 'te' ? 'అన్ని వర్గాలు' : 'All categories'}
           </button>
           
-          <div className="mb-8 animate-fade-in">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#173B5F]/10 text-[#173B5F] text-xs font-bold mb-2">
+          <div className="mb-6 animate-fade-in">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#B85F45]/10 text-[#B85F45] text-xs font-bold mb-2">
               <span>Category Focus</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-[#173B5F] mb-1">{catName}</h1>
-            <p className="text-sm text-[#66727E] font-medium">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-[#151719] mb-1">{catName}</h1>
+            <p className="text-sm text-[#728477] font-medium">
               {language === 'te'
                 ? `${catName} కేటగిరీలో ప్రయోజనాలు బ్రౌజ్ చేస్తోంది`
                 : `Browsing all available schemes and entitlements in ${catName}`}
             </p>
           </div>
+
+          <JourneyNextStepBanner currentStage="discover" />
 
           {/* Personalization prompt */}
           <div className="p-6 rounded-3xl mb-8 bg-gradient-to-r from-white via-white to-[#EAF2F8] border border-[#173B5F]/20 shadow-md shadow-[#173B5F]/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -115,6 +118,8 @@ export default function FindPage() {
               : 'Select a domain to explore verified government support programs.'}
           </p>
         </div>
+
+        <JourneyNextStepBanner currentStage="discover" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           {categories.map((cat) => (

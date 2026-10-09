@@ -5,6 +5,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import BenefitCard from '../components/BenefitCard';
+import JourneyNextStepBanner from '../components/JourneyNextStepBanner';
 import { EmptyState } from '../components/UI';
 import { 
   Search, RefreshCw, FileText, CheckCircle, AlertCircle, 
@@ -75,6 +76,8 @@ export default function HelpMapPage() {
             </button>
           </div>
         </div>
+
+        <JourneyNextStepBanner currentStage="check" />
 
         {/* ── Summary Tiles (Premium Information Tiles with Ambient Glows) ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-10">

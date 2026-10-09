@@ -83,9 +83,11 @@ export interface Benefit {
   departmentTe: string;
   lastVerified: string;
   deadline?: string;
+  sourceUrl?: string;
+  state?: string;
   verificationNotes: string;
   verificationNotesTe: string;
-  isDemoData: boolean;
+  isDemoData?: boolean;
 }
 
 // User profile built from questionnaire
@@ -108,6 +110,7 @@ export interface MatchResult {
   status: MatchStatus;
   matchedCriteria: string[];
   missingInfo: string[];
+  unmatchedCriteria?: string[];
 }
 
 export interface HelpMapResults {

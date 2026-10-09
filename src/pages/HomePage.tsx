@@ -510,6 +510,123 @@ function FinalCTASection({ t }: { t: (k: any) => string }) {
   );
 }
 
+// ─── Personas Section — Tailored Hubs ─────────────────────
+function PersonasSection() {
+  const navigate = useNavigate();
+  const { language } = useApp();
+  const te = language === 'te';
+
+  const personas = [
+    {
+      id: 'student',
+      title: "I'm a Student",
+      titleTe: 'నేను విద్యార్థిని',
+      tagline: 'Scholarships, internships & hackathons with direct verified links',
+      taglineTe: 'ధృవీకరించబడిన లింక్‌లతో స్కాలర్‌షిప్‌లు, ఇంటర్న్‌షిప్‌లు & హ్యాకథాన్‌లు',
+      icon: <GraduationCap size={24} />,
+      color: '#B85F45',
+      badge: 'Deep Hub',
+      badgeTe: 'ప్రత్యేక హబ్',
+    },
+    {
+      id: 'farmer',
+      title: "I'm a Farmer",
+      titleTe: 'నేను రైతును',
+      tagline: 'PM-KISAN, crop insurance, Rythu Bandhu & input subsidies',
+      taglineTe: 'పిఎం-కిసాన్, పంట బీమా, రైతు బంధు & రాయితీలు',
+      icon: <Wheat size={24} />,
+      color: '#728477',
+    },
+    {
+      id: 'senior',
+      title: "I'm a Senior Citizen",
+      titleTe: 'నేను వృద్ధ పౌరుడిని',
+      tagline: 'Old-age pensions, healthcare coverage & travel welfare',
+      taglineTe: 'వృద్ధాప్య పింఛన్లు, ఆరోగ్య రక్షణ & సంక్షేమం',
+      icon: <Heart size={24} />,
+      color: '#30364F',
+    },
+    {
+      id: 'job-seeker',
+      title: "I'm a Job Seeker",
+      titleTe: 'నేను ఉద్యోగాన్వేషిని',
+      tagline: 'PM Internship, Skill India training & career exchanges',
+      taglineTe: 'పిఎం ఇంటర్న్‌షిప్, స్కిల్ ఇండియా శిక్షణ & ఉద్యోగ అవకాశాలు',
+      icon: <Briefcase size={24} />,
+      color: '#151719',
+    },
+    {
+      id: 'woman',
+      title: "I'm a Woman / Mother",
+      titleTe: 'నేను మహిళను / తల్లిని',
+      tagline: 'Matru Vandana, Stand-Up India, Mission Shakti & child care',
+      taglineTe: 'మాతృ వందన, స్టాండ్-అప్ ఇండియా, మిషన్ శక్తి సహాయం',
+      icon: <Users size={24} />,
+      color: '#B85F45',
+    },
+  ];
+
+  return (
+    <section className="py-16 md:py-20 relative bg-[#FAF8F3]/60" id="personas">
+      <div className="max-w-6xl mx-auto px-4 md:px-6">
+        <RevealSection>
+          <div className="text-center mb-12">
+            <span className="section-eyebrow section-eyebrow--amber">
+              {te ? 'మీ గుర్తింపు ఆధారంగా' : 'Tailored For You'}
+            </span>
+            <h2 className="section-heading section-heading--dark">
+              {te ? 'మీరు ఎవరు? మీ కోసం ప్రత్యేక హబ్‌లు' : 'EXPLORE BY WHO YOU ARE'}
+            </h2>
+            <p className="section-subtext">
+              {te
+                ? 'మీ ప్రొఫైల్‌కు ప్రత్యేకంగా సరిపోయే అవకాశాలు, స్కాలర్‌షిప్‌లు మరియు ప్రభుత్వ పథకాలను ప్రత్యక్షంగా కనుగొనండి.'
+                : 'Skip generic searching. Choose your role to explore verified scholarships, internships, pensions, and welfare schemes tailored directly to you.'}
+            </p>
+          </div>
+        </RevealSection>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {personas.map((p, i) => (
+            <RevealSection key={p.id} delay={i * 70}>
+              <button
+                onClick={() => navigate(`/for/${p.id}`)}
+                className="w-full text-left p-6 rounded-3xl bg-white border border-[#D8CDBB] hover:border-[#151719] hover:shadow-xl transition-all duration-300 group flex flex-col justify-between h-full relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#D8CDBB] to-transparent group-hover:from-[#B85F45] group-hover:to-[#30364F] transition-all" />
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-110"
+                      style={{ background: p.color }}
+                    >
+                      {p.icon}
+                    </div>
+                    {p.badge && (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#B85F45]/15 text-[#B85F45] border border-[#B85F45]/30">
+                        {te ? p.badgeTe : p.badge}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-extrabold text-[#151719] group-hover:text-[#B85F45] transition-colors mb-2">
+                    {te ? p.titleTe : p.title}
+                  </h3>
+                  <p className="text-xs text-[#728477] leading-relaxed mb-6">
+                    {te ? p.taglineTe : p.tagline}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between pt-3 border-t border-[#E8E3DA] text-xs font-bold text-[#30364F] group-hover:text-[#B85F45]">
+                  <span>{te ? 'హబ్ తెరవండి' : 'Open Persona Hub'}</span>
+                  <ChevronRight size={16} className="transform group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
+            </RevealSection>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Main HomePage ─────────────────────────────────────────
 export default function HomePage() {
   const { t, language } = useApp();
@@ -523,10 +640,13 @@ export default function HomePage() {
       {/* ── Transition: dark→light ── */}
       <div className="home-transition-zone" aria-hidden="true" />
 
-      {/* ── 2. PROBLEM SECTION ── */}
+      {/* ── 2. PERSONAS SECTION — I'm a student/farmer/... ── */}
+      <PersonasSection />
+
+      {/* ── 3. PROBLEM SECTION ── */}
       <ProblemSection />
 
-      {/* ── 3. CATEGORIES ── */}
+      {/* ── 4. CATEGORIES ── */}
       <section className="categories-section" id="categories">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <RevealSection>

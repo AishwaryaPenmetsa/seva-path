@@ -21,9 +21,8 @@ import {
 import {
   Search, ChevronDown, ChevronUp, ArrowRight, ExternalLink,
   Bell, FileText, Check, Info, Trash2,
-  Sparkles, ShieldCheck, Calendar
+  Sparkles, ShieldCheck, Calendar, Download, HardDrive
 } from 'lucide-react';
-import SaveJourneySection from '../components/SaveJourneySection';
 
 export default function ApplicationsPage() {
   const { t, language, applications, addApplication, updateApplication, removeApplication } = useApp();
@@ -327,8 +326,29 @@ export default function ApplicationsPage() {
           })}
         </div>
 
-        {/* Final CTA: Save My SevaPath Journey */}
-        <SaveJourneySection />
+        {/* Local storage note */}
+        <div className="mt-10 p-5 rounded-3xl bg-[#FAF8F3] border border-[#D8CDBB] flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#F1EDE4] text-[#30364F] flex items-center justify-center shrink-0">
+              <HardDrive size={18} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-[#151719]">
+                {te ? 'అన్ని దరఖాస్తులు మీ బ్రౌజర్‌లో మాత్రమే సేవ్ చేయబడతాయి' : 'All application journeys are stored locally on this device'}
+              </p>
+              <p className="text-[11px] text-[#728477]">
+                {te ? 'సర్వర్ లేదా క్లౌడ్ నిల్వ లేదు. మీ గోప్యత సంరక్షించబడుతుంది.' : 'Zero cloud logging. You can backup your profile & applications anytime in Profile.'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="btn bg-[#30364F] text-white hover:bg-[#151719] btn-sm text-xs shrink-0 rounded-xl"
+          >
+            <span>{te ? 'డేటాను నిర్వహించండి' : 'Manage & Backup'}</span>
+            <ArrowRight size={13} />
+          </button>
+        </div>
 
       </div>
     </div>

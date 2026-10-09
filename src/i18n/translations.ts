@@ -81,6 +81,14 @@ export const translations = {
     'q.skip': 'Skip this question',
     'q.findBenefits': 'Find My Benefits',
 
+    // Questionnaire Step Eyebrows
+    'q.step1.eyebrow': 'Basic Demographics',
+    'q.step2.eyebrow': 'Areas of Need',
+    'q.step3.eyebrow': 'Category Details',
+    'q.step4.eyebrow': 'Financial Context',
+    'q.step5.eyebrow': 'Special Circumstances',
+    'q.step6.eyebrow': 'Summary Review',
+
     // Step 1
     'q1.title': 'Tell us a little about yourself.',
     'q1.age': 'Age',
@@ -402,6 +410,14 @@ export const translations = {
     'q.back': 'వెనుకకు',
     'q.skip': 'ఈ ప్రశ్నను దాటవేయండి',
     'q.findBenefits': 'నా ప్రయోజనాలను కనుగొనండి',
+
+    // Questionnaire Step Eyebrows
+    'q.step1.eyebrow': 'ప్రాథమిక వివరాలు',
+    'q.step2.eyebrow': 'అవసరమైన రంగాలు',
+    'q.step3.eyebrow': 'వర్గ వివరాలు',
+    'q.step4.eyebrow': 'ఆర్థిక సందర్భం',
+    'q.step5.eyebrow': 'ప్రత్యేక పరిస్థితులు',
+    'q.step6.eyebrow': 'సారాంశ సమీక్ష',
 
     // Step 1
     'q1.title': 'మీ గురించి కొంచెం చెప్పండి.',

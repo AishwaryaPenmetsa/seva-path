@@ -181,7 +181,7 @@ export default function QuestionnairePage() {
               <div>
                 <div className="mb-6">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#16856A] block mb-1">
-                    Basic Demographics
+                    {t('q.step1.eyebrow')}
                   </span>
                   <h2 className="text-xl sm:text-2xl font-bold text-[#173B5F]">
                     {t('q1.title')}
@@ -257,7 +257,7 @@ export default function QuestionnairePage() {
               <div>
                 <div className="mb-6">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#16856A] block mb-1">
-                    Areas of Need
+                    {t('q.step2.eyebrow')}
                   </span>
                   <h2 className="text-xl sm:text-2xl font-bold text-[#173B5F] mb-1">
                     {t('q2.title')}
@@ -294,7 +294,7 @@ export default function QuestionnairePage() {
               <div>
                 <div className="mb-6">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#16856A] block mb-1">
-                    Category Details
+                    {t('q.step3.eyebrow')}
                   </span>
                   <h2 className="text-xl sm:text-2xl font-bold text-[#173B5F]">
                     {t('q3.title')}
@@ -400,7 +400,7 @@ export default function QuestionnairePage() {
               <div>
                 <div className="mb-6">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#16856A] block mb-1">
-                    Financial Context
+                    {t('q.step4.eyebrow')}
                   </span>
                   <h2 className="text-xl sm:text-2xl font-bold text-[#173B5F] mb-1">
                     {t('q4.title')}
@@ -445,7 +445,7 @@ export default function QuestionnairePage() {
               <div>
                 <div className="mb-6">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#16856A] block mb-1">
-                    Special Inclusions
+                    {t('q.step5.eyebrow')}
                   </span>
                   <h2 className="text-xl sm:text-2xl font-bold text-[#173B5F]">
                     {t('q5.title')}
@@ -480,7 +480,7 @@ export default function QuestionnairePage() {
               <div>
                 <div className="mb-6">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#16856A] block mb-1">
-                    Summary Review
+                    {t('q.step6.eyebrow')}
                   </span>
                   <h2 className="text-xl sm:text-2xl font-bold text-[#173B5F]">
                     {t('q6.title')}
