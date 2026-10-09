@@ -47,6 +47,12 @@ export function createTrackedApplication(b: Benefit, stage: number): TrackedAppl
   };
 }
 
+export function startApplication(b: Benefit, _lang?: 'en' | 'te'): TrackedApplication {
+  const app = createTrackedApplication(b, 1);
+  storage.addApplication(app);
+  return app;
+}
+
 interface Deps {
   benefit: Benefit;
   existing?: TrackedApplication;
