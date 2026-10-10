@@ -10,7 +10,7 @@ import { useApp } from '../contexts/AppContext';
 import { EmptyState } from '../components/UI';
 import { getBenefitById } from '../data/benefits';
 import { isOpenableUrl, openOfficialApplication } from '../services/startApplication';
-import type { TrackedApplication, CivicApplicationStage, CivicDecisionOutcome } from '../types';
+import type { TrackedApplication, CivicApplicationStage, CivicDecisionOutcome, ApplicationStatus } from '../types';
 import {
   FileText, ArrowRight, ExternalLink, Trash2, Calendar,
   ShieldCheck, Info, Sparkles, ChevronDown, ChevronUp,
@@ -53,9 +53,17 @@ export default function ApplicationsPage() {
     const nextStage = STAGES[currentIndex + 1].key;
     const today = new Date().toISOString().split('T')[0];
 
+    const stageStatusMap: Record<CivicApplicationStage, ApplicationStatus> = {
+      'started': 'preparing',
+      'documents-ready': 'documents-ready',
+      'submitted': 'submitted',
+      'under-verification': 'verification',
+      'decision': 'decision-received',
+    };
+
     updateApplication(app.id, {
       civicStage: nextStage,
-      status: nextStage === 'decision' ? 'decision-received' : nextStage === 'under-verification' ? 'verification' : nextStage,
+      status: nextStage === 'decision' ? 'decision-received' : stageStatusMap[nextStage],
       submittedDate: nextStage === 'submitted' ? today : app.submittedDate,
       verificationDate: nextStage === 'under-verification' ? today : app.verificationDate,
       decisionDate: nextStage === 'decision' ? today : app.decisionDate,
@@ -68,9 +76,17 @@ export default function ApplicationsPage() {
     if (currentIndex <= 0) return;
     const prevStage = STAGES[currentIndex - 1].key;
 
+    const stageStatusMap: Record<CivicApplicationStage, ApplicationStatus> = {
+      'started': 'preparing',
+      'documents-ready': 'documents-ready',
+      'submitted': 'submitted',
+      'under-verification': 'verification',
+      'decision': 'decision-received',
+    };
+
     updateApplication(app.id, {
       civicStage: prevStage,
-      status: prevStage === 'documents-ready' ? 'documents-ready' : prevStage === 'started' ? 'preparing' : prevStage,
+      status: stageStatusMap[prevStage],
     });
   };
 
