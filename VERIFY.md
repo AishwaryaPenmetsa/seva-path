@@ -16,8 +16,8 @@ This document catalogs every government scheme and student/citizen opportunity l
 | `jobs-skill-dev` | Pradhan Mantri Kaushal Vikas Yojana (PMKVY) | Ministry of Skill Development & Entrepreneurship | https://www.skillindiadigital.gov.in | https://www.skillindiadigital.gov.in | Central | 2025-10-01 |
 | `jobs-employment-exchange` | National Career Service (NCS) | Ministry of Labour and Employment | https://www.ncs.gov.in | https://www.ncs.gov.in | Central | 2025-10-01 |
 | `pm-internship` | PM Internship Scheme | Ministry of Corporate Affairs | https://pminternship.mca.gov.in | https://pminternship.mca.gov.in | Central | 2025-10-01 |
-| `fin-pension` | Indira Gandhi National Old Age Pension Scheme (IGNOAPS) | Ministry of Rural Development | https://nsap.nic.in | https://nsap.nic.in | Central | 2025-10-01 |
-| `fin-widow-pension` | Indira Gandhi National Widow Pension Scheme (IGNWPS) | Ministry of Rural Development | https://nsap.nic.in | https://nsap.nic.in | Central | 2025-10-01 |
+| `fin-pension` | Indira Gandhi National Old Age Pension Scheme (IGNOAPS) | Ministry of Rural Development | https://nsap.dord.gov.in | https://nsap.dord.gov.in | Central | 2025-10-01 |
+| `fin-widow-pension` | Indira Gandhi National Widow Pension Scheme (IGNWPS) | Ministry of Rural Development | https://nsap.dord.gov.in | https://nsap.dord.gov.in | Central | 2025-10-01 |
 | `housing-support` | Pradhan Mantri Awas Yojana (PMAY) | Ministry of Housing & Urban Affairs / Rural Development | https://pmaymis.gov.in | https://pmaymis.gov.in | Central | 2025-10-01 |
 | `farm-income-support` | PM-KISAN (Pradhan Mantri Kisan Samman Nidhi) | Ministry of Agriculture & Farmers Welfare | https://pmkisan.gov.in | https://pmkisan.gov.in | Central | 2025-10-01 |
 | `farm-crop-insurance` | Pradhan Mantri Fasal Bima Yojana (PMFBY) | Ministry of Agriculture & Farmers Welfare | https://pmfby.gov.in | https://pmfby.gov.in | Central | 2025-10-01 |
@@ -28,7 +28,7 @@ This document catalogs every government scheme and student/citizen opportunity l
 | `biz-mudra-loan` | Pradhan Mantri MUDRA Yojana (PMMY) | Department of Financial Services, Ministry of Finance | https://www.mudra.org.in | https://www.mudra.org.in | Central | 2025-10-01 |
 | `biz-women-entrepreneur` | Stand-Up India Scheme | Small Industries Development Bank of India (SIDBI) | https://www.standupmitra.in | https://www.standupmitra.in | Central | 2025-10-01 |
 | `edu-merit-scholarship` | Central Sector Scheme of Scholarship (PM-USP) | Department of Higher Education, Ministry of Education | https://scholarships.gov.in | https://scholarships.gov.in | Central | 2025-10-01 |
-| `fin-disability-pension` | Indira Gandhi National Disability Pension Scheme (IGNDPS) | Ministry of Rural Development | https://nsap.nic.in | https://nsap.nic.in | Central | 2025-10-01 |
+| `fin-disability-pension` | Indira Gandhi National Disability Pension Scheme (IGNDPS) | Ministry of Rural Development | https://nsap.dord.gov.in | https://nsap.dord.gov.in | Central | 2025-10-01 |
 | `ap-vidya-deevena` | Jagananna Vidya Deevena | Higher Education Department, Govt of Andhra Pradesh | https://apsche.ap.gov.in | https://apsche.ap.gov.in | Andhra Pradesh | 2025-10-01 |
 | `ts-rythu-bandhu` | Rythu Bandhu / Rythu Bharosa | Agriculture Department, Govt of Telangana | https://rythubandhu.telangana.gov.in | https://rythubandhu.telangana.gov.in | Telangana | 2025-10-01 |
 
