@@ -2,7 +2,7 @@
 // SevaPath — Core Types
 // ============================================================
 
-export type Language = 'en' | 'te';
+export type Language = 'en' | 'te' | 'hi';
 
 export type MatchStatus = 'likely' | 'more-info' | 'no-match' | 'action-required';
 
@@ -12,8 +12,10 @@ export type ApplicationMode = 'online' | 'offline' | 'both';
 
 export type CategoryId =
   | 'education'
+  | 'scholarships'
   | 'jobs-skills'
   | 'financial-support'
+  | 'loans-finance'
   | 'housing'
   | 'farming'
   | 'health'
@@ -24,8 +26,10 @@ export interface Category {
   id: CategoryId;
   name: string;
   nameTe: string;
+  nameHi?: string;
   description: string;
   descriptionTe: string;
+  descriptionHi?: string;
   icon: string; // Lucide icon name
 }
 
@@ -61,15 +65,32 @@ export interface ApplicationStep {
   descriptionTe: string;
 }
 
+export interface DeadlineInfo {
+  type: 'rolling' | 'dated' | 'unknown';
+  date?: string;
+  note?: string;
+  sourceUrl?: string;
+  lastVerified?: string;
+}
+
+export interface HelplineInfo {
+  number: string;
+  hours?: string;
+  sourceUrl?: string;
+}
+
 export interface Benefit {
   id: string;
   name: string;
   nameTe: string;
+  nameHi?: string;
   category: CategoryId;
   description: string;
   descriptionTe: string;
+  descriptionHi?: string;
   benefit: string;
   benefitTe: string;
+  benefitHi?: string;
   eligibilityCriteria: EligibilityCriterion[];
   documents: DocumentRequirement[];
   preparationTime: string;
@@ -79,12 +100,19 @@ export interface Benefit {
   officialSource: string;
   officialSourceTe: string;
   officialApplicationUrl: string;
+  officialInfoUrl?: string;
+  officialStatusUrl?: string;
   department: string;
   departmentTe: string;
+  departmentHi?: string;
+  departmentName?: string;
   lastVerified: string;
   deadline?: string;
+  deadlineInfo?: DeadlineInfo;
+  helpline?: HelplineInfo;
   sourceUrl?: string;
   state?: string;
+  tags?: string[];
   verificationNotes: string;
   verificationNotesTe: string;
   isDemoData?: boolean;
@@ -141,15 +169,32 @@ export type ApplicationStatus =
   | 'action-required'
   | 'decision-received';
 
+export type CivicApplicationStage =
+  | 'started'
+  | 'documents-ready'
+  | 'submitted'
+  | 'under-verification'
+  | 'decision';
+
+export type CivicDecisionOutcome = 'approved' | 'rejected' | 'waiting';
+
 export interface TrackedApplication {
   id: string;
   benefitId: string;
   benefitName: string;
   benefitNameTe: string;
+  benefitNameHi?: string;
   category: CategoryId;
   status: ApplicationStatus;
   startedDate: string;
   timeline: ApplicationTimelineEntry[];
+  civicStage?: CivicApplicationStage;
+  civicDecision?: CivicDecisionOutcome;
+  submittedDate?: string;
+  verificationDate?: string;
+  decisionDate?: string;
+  userNotes?: string;
+  officialStatusUrl?: string;
   /** Index (0-7) of the current journey step; 7 = journey complete. User-managed beyond step 3. */
   stage?: number;
   /** Dates (YYYY-MM-DD) the user/system reached each stage index. */

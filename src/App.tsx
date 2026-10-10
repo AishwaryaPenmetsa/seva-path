@@ -23,6 +23,7 @@ const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'));
 const FindPage = lazy(() => import('./pages/FindPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PersonaHubPage = lazy(() => import('./pages/PersonaHubPage'));
+const HelpPage = lazy(() => import('./pages/HelpPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function PageLoader() {
@@ -63,8 +64,11 @@ function AppShell() {
               <Route path="/benefit/:id" element={<BenefitDetailPage />} />
               <Route path="/documents/:id" element={<DocumentsPage />} />
               <Route path="/form-explainer" element={<FormExplainerPage />} />
+              <Route path="/form-guides" element={<FormExplainerPage />} />
               <Route path="/applications" element={<ApplicationsPage />} />
               <Route path="/find" element={<FindPage />} />
+              <Route path="/find/:category" element={<FindPage />} />
+              <Route path="/help" element={<HelpPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/for/:persona" element={<PersonaHubPage />} />
               <Route path="*" element={<NotFoundPage />} />

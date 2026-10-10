@@ -2303,3 +2303,19 @@ header, main, nav, .mobile-nav {
    ============================================================ */
 
 /* (Preserved from original) */
+
+@media print {
+  nav, footer, #ask-sevapath-toggle, button, a {
+    display: none !important;
+  }
+  #printable-checklist {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}

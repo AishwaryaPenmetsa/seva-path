@@ -1,14 +1,12 @@
 // ============================================================
 // SevaPath — Premium Benefit Detail Page (Redesigned)
-// ============================================================
-// Dynamically computes journey stage from document readiness
-// and application status. Always shows the next action.
+// Verified links, department helplines, warm civic palette
 // ============================================================
 
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
-import { StatusBadge, EffortIndicator, AppModeBadge, JourneyTimeline, ProgressBar, DemoBadge } from '../components/UI';
+import { StatusBadge, EffortIndicator, AppModeBadge, JourneyTimeline } from '../components/UI';
 import BenefitJourneyGraphic from '../components/BenefitJourneyGraphic';
 import type { JourneyStage } from '../components/BenefitJourneyGraphic';
 import { getBenefitById } from '../data/benefits';
@@ -17,16 +15,18 @@ import {
   ChevronLeft, ChevronRight, Check, AlertTriangle,
   FileText, Clock, Monitor, ExternalLink, Shield,
   Calendar, BookmarkPlus, Bookmark, Info, ArrowRight,
-  ShieldCheck, Sparkles, Building2, UserCheck, Send,
-  CheckCircle2, AlertCircle
+  ShieldCheck, Sparkles, Building2, Send, Phone
 } from 'lucide-react';
 import * as storage from '../services/storage';
-import { continueToApplication, createTrackedApplication } from '../services/startApplication';
+import { continueToApplication, createTrackedApplication, isOpenableUrl } from '../services/startApplication';
 
 export default function BenefitDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, language, isBenefitSaved, toggleSavedBenefit, addApplication, applications, updateApplication, helpMapResults } = useApp();
+
+  const isTe = language === 'te';
+  const isHi = language === 'hi';
 
   const benefit = getBenefitById(id || '');
 
@@ -34,7 +34,7 @@ export default function BenefitDetailPage() {
     return (
       <div className="min-h-[80vh] flex items-center justify-center pb-20 md:pb-12">
         <div className="text-center">
-          <p className="text-lg font-bold text-[#17212B] mb-2">{t('general.error')}</p>
+          <p className="text-lg font-bold text-[#151719] mb-2">{t('general.error')}</p>
           <button onClick={() => navigate(-1)} className="btn btn-secondary">
             <ChevronLeft size={16} /> {t('q.back')}
           </button>
@@ -44,12 +44,12 @@ export default function BenefitDetailPage() {
   }
 
   const b = benefit;
-  const name = language === 'te' ? b.nameTe : b.name;
-  const description = language === 'te' ? b.descriptionTe : b.description;
-  const benefitText = language === 'te' ? b.benefitTe : b.benefit;
-  const dept = language === 'te' ? b.departmentTe : b.department;
-  const officialSrc = language === 'te' ? b.officialSourceTe : b.officialSource;
-  const verNotes = language === 'te' ? b.verificationNotesTe : b.verificationNotes;
+  const name = isTe ? b.nameTe : isHi ? (b.nameHi || b.name) : b.name;
+  const description = isTe ? b.descriptionTe : isHi ? (b.descriptionHi || b.description) : b.description;
+  const benefitText = isTe ? b.benefitTe : isHi ? (b.benefitHi || b.benefit) : b.benefit;
+  const dept = isTe ? b.departmentTe : isHi ? (b.departmentHi || b.department) : (b.departmentName || b.department);
+  const officialSrc = isTe ? b.officialSourceTe : b.officialSource;
+  const verNotes = isTe ? b.verificationNotesTe : b.verificationNotes;
   const saved = isBenefitSaved(b.id);
 
   // Match result if available
@@ -63,7 +63,7 @@ export default function BenefitDetailPage() {
   const allDocsReady = readyDocs.length === b.documents.length && b.documents.length > 0;
   const prepProgress = b.documents.length > 0 ? readyDocs.length / b.documents.length : 0;
 
-  // Existing application for this benefit (stage is user-managed after "started")
+  // Existing application
   const existingApp = applications.find((a) => a.benefitId === b.id);
   const appStage = existingApp ? getStage(existingApp) : 0;
   const isSubmitted = appStage >= VERIFICATION;
@@ -76,7 +76,6 @@ export default function BenefitDetailPage() {
     return 'prepare';
   }, [isSubmitted, isFormCompleted, allDocsReady]);
 
-  // Continue to application: opens official portal in new tab, tracks app, goes to /applications
   const handleContinue = () => {
     continueToApplication({
       benefit: b,
@@ -87,30 +86,30 @@ export default function BenefitDetailPage() {
     });
   };
 
-  // Compute next action label and handler
   const { nextActionLabel, nextActionHandler } = (() => {
     if (isSubmitted) {
       return {
-        nextActionLabel: language === 'te' ? 'మీ దరఖాస్తు ట్రాక్ చేయండి' : 'Track your application',
+        nextActionLabel: isTe ? 'మీ దరఖాస్తు ట్రాక్ చేయండి' : isHi ? 'आवेदन ट्रैक करें' : 'Track your application',
         nextActionHandler: () => navigate('/applications'),
       };
     }
     if (allDocsReady) {
       return {
-        nextActionLabel: language === 'te' ? 'దరఖాస్తుకు కొనసాగండి' : 'Continue to application',
+        nextActionLabel: isTe ? 'దరఖాస్తుకు కొనసాగండి' : isHi ? 'आवेदन के लिए आगे बढ़ें' : 'Continue to application',
         nextActionHandler: handleContinue,
       };
     }
     const remaining = b.documents.length - readyDocs.length;
     return {
-      nextActionLabel: language === 'te'
+      nextActionLabel: isTe
         ? `${remaining} పత్రాలు సిద్ధం చేయండి`
+        : isHi
+        ? `शेष ${remaining} दस्तावेज तैयार करें`
         : `Prepare ${remaining} remaining document${remaining !== 1 ? 's' : ''}`,
       nextActionHandler: () => navigate(`/documents/${b.id}`),
     };
   })();
 
-  // "Start Application Track" (documents not ready yet): track at the "prepare documents" step
   const handleStartApplication = () => {
     if (!existingApp) {
       const app = createTrackedApplication(b, 1);
@@ -120,15 +119,23 @@ export default function BenefitDetailPage() {
     navigate('/applications');
   };
 
-  // Missing documents list (for the actionable checklist)
   const missingDocs = b.documents.filter((d) => !docChecks.find((dc) => dc.documentId === d.id && dc.benefitId === b.id && dc.isReady));
+
+  const hasAppUrl = Boolean(b.officialApplicationUrl && b.officialApplicationUrl !== '#demo');
+  const hasInfoUrl = Boolean((b.officialInfoUrl || b.sourceUrl) && (b.officialInfoUrl || b.sourceUrl) !== '#demo');
+
+  const deadlineDisplay = b.deadline
+    ? b.deadline === 'rolling'
+      ? (isTe ? 'అప్లికేషన్లు తెరిచి ఉన్నాయి (రోలింగ్)' : isHi ? 'आवेदन खुले हैं (रोलिंग)' : 'Applications open (rolling)')
+      : b.deadline
+    : (isTe ? 'గడువు కోసం అధికారిక పోర్టల్ తనిఖీ చేయండి' : isHi ? 'समय सीमा के लिए पोर्टल देखें' : 'Check the official portal for current deadline');
 
   return (
     <div className="min-h-[80vh] pb-20 md:pb-12">
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10">
         
         {/* Back navigation */}
-        <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm mb-6 -ml-2 text-[#66727E] hover:text-[#173B5F]">
+        <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm mb-6 -ml-2 text-[#728477] hover:text-[#151719]">
           <ChevronLeft size={16} /> {t('helpMap.back')}
         </button>
 
@@ -143,23 +150,23 @@ export default function BenefitDetailPage() {
         />
 
         {/* ── Hero Header ── */}
-        <div className="benefit-hero animate-fade-in">
-          <div className="benefit-hero__content">
+        <div className="benefit-hero animate-fade-in p-6 sm:p-8 rounded-3xl bg-white border border-[#D8CDBB] shadow-xs flex flex-col md:flex-row items-start justify-between gap-6">
+          <div className="flex-1">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="text-xs font-bold text-[#16856A] uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#E8F5E9]">
+              <span className="text-xs font-bold text-[#B85F45] uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#F1EDE4]">
                 {t(`cat.${b.category}` as any)}
               </span>
               {matchResult && <StatusBadge status={matchResult.status} />}
               {existingApp && (
-                <span className="text-xs font-bold text-[#173B5F] uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#EAF2F8]">
+                <span className="text-xs font-bold text-[#30364F] uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#E8E3DA]">
                   Tracked
                 </span>
               )}
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-[#173B5F]">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-[#151719]">
               {name}
             </h1>
-            <p className="text-sm text-[#66727E] mt-2 leading-relaxed max-w-2xl">
+            <p className="text-sm text-[#728477] mt-2 leading-relaxed max-w-2xl font-medium">
               {description}
             </p>
           </div>
@@ -167,7 +174,7 @@ export default function BenefitDetailPage() {
           <div className="flex gap-2 shrink-0">
             <button 
               onClick={() => toggleSavedBenefit(b.id)} 
-              className={`btn btn-sm ${saved ? 'btn-primary' : 'btn-secondary'}`}
+              className={`btn btn-sm ${saved ? 'bg-[#151719] text-white' : 'bg-[#F1EDE4] text-[#151719] border border-[#D8CDBB]'}`}
             >
               {saved ? <Bookmark size={15} className="fill-current text-white" /> : <BookmarkPlus size={15} />}
               <span>{saved ? t('detail.saved') : t('detail.saveBenefit')}</span>
@@ -182,8 +189,8 @@ export default function BenefitDetailPage() {
           <div className="md:col-span-2 space-y-6">
             
             {/* Quick Facts Grid */}
-            <div className="card p-6 rounded-3xl">
-              <h2 className="text-base font-bold text-[#173B5F] mb-4 flex items-center gap-2">
+            <div className="card p-6 rounded-3xl bg-white border border-[#D8CDBB]">
+              <h2 className="text-base font-bold text-[#151719] mb-4 flex items-center gap-2">
                 <Sparkles size={18} className="text-[#D99A24]" />
                 <span>{t('detail.quickFacts')}</span>
               </h2>
@@ -197,156 +204,69 @@ export default function BenefitDetailPage() {
               </div>
             </div>
 
-            {/* Why Shown / Eligibility Criteria */}
-            {matchResult && matchResult.matchedCriteria.length > 0 && (
-              <div className="card p-6 rounded-3xl bg-gradient-to-br from-white to-[#F0FAF7] border-[#16856A]/30">
-                <h2 className="text-base font-bold text-[#16856A] mb-3 flex items-center gap-2">
-                  <ShieldCheck size={18} />
-                  <span>{t('detail.whyShown')}</span>
-                </h2>
-                <div className="space-y-2 mb-4">
-                  {matchResult.matchedCriteria.map((c, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm font-medium text-[#17212B]">
-                      <div className="w-5 h-5 rounded-full bg-[#E8F5E9] text-[#16856A] flex items-center justify-center text-xs font-bold shrink-0">
-                        ✓
-                      </div>
-                      <span>{c}</span>
+            {/* Eligibility Criteria */}
+            <div className="card p-6 rounded-3xl bg-white border border-[#D8CDBB]">
+              <h2 className="text-base font-bold text-[#151719] mb-4 flex items-center gap-2">
+                <ShieldCheck size={18} className="text-[#728477]" />
+                <span>{t('detail.eligibility')}</span>
+              </h2>
+              <div className="space-y-3">
+                {b.eligibilityCriteria.map((c, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-[#FAF8F3] border border-[#E8E3DA]">
+                    <Check size={16} className="text-[#728477] mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-[#151719]">{isTe ? c.labelTe : c.label}</p>
+                      <p className="text-xs text-[#728477] mt-0.5">{isTe ? c.conditionTe : c.condition}</p>
                     </div>
-                  ))}
-                </div>
-                {matchResult.missingInfo.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-[#E2E6EA]">
-                    <p className="text-xs font-bold text-[#D99A24] uppercase tracking-wider mb-2">{t('detail.missingInfo')}</p>
-                    {matchResult.missingInfo.map((m, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs text-[#66727E]">
-                        <AlertTriangle size={13} className="text-[#D99A24] shrink-0" />
-                        <span>{m}</span>
-                      </div>
-                    ))}
                   </div>
-                )}
-                <p className="text-[11px] text-[#9AA5B1] mt-4 italic">{t('detail.notOfficial')}</p>
+                ))}
               </div>
-            )}
-
-            {/* What You Receive */}
-            <div className="card p-6 rounded-3xl">
-              <h2 className="text-base font-bold text-[#173B5F] mb-3">{t('detail.whatYouGet')}</h2>
-              <p className="text-sm text-[#17212B] leading-relaxed bg-[#EAF2F8]/60 p-4 rounded-2xl border border-[#E2E6EA]/80 font-medium">
-                {benefitText}
-              </p>
             </div>
 
-            {/* ── Document Checklist Prep ── */}
-            <div className="card p-6 rounded-3xl" id="preparation-section">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-bold text-[#173B5F]">{t('detail.beforeApply')}</h2>
-                <span className={`text-xs font-bold ${allDocsReady ? 'text-[#16856A]' : 'text-[#D99A24]'}`}>
-                  {readyDocs.length} / {b.documents.length} {t('detail.ready')}
-                </span>
+            {/* Document Preparation Action Card */}
+            <div className="card p-6 rounded-3xl bg-white border border-[#D8CDBB]">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <h2 className="text-base font-bold text-[#151719] flex items-center gap-2">
+                  <FileText size={18} className="text-[#B85F45]" />
+                  <span>{t('detail.docsNeeded')}</span>
+                </h2>
+                <button
+                  onClick={() => navigate(`/documents/${b.id}`)}
+                  className="btn btn-sm bg-[#B85F45] text-white hover:bg-[#a05038]"
+                >
+                  <span>{t('detail.prepDocs')}</span>
+                  <ArrowRight size={14} />
+                </button>
               </div>
-              
-              <ProgressBar
-                value={readyDocs.length}
-                max={b.documents.length}
-              />
-
-              {/* Status message */}
-              {allDocsReady ? (
-                <div className="mt-4 p-4 rounded-2xl bg-[#E8F5E9] border border-[#16856A]/25 flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-[#16856A] mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-bold text-[#126D57]">
-                      {language === 'te' ? 'దరఖాస్తుకు సిద్ధం — అన్ని పత్రాలు సిద్ధం!' : 'Ready to apply — all documents are ready!'}
-                    </p>
-                    <p className="text-xs text-[#126D57]/80 mt-0.5">
-                      {language === 'te'
-                        ? 'మీరు ఇప్పుడు దరఖాస్తు చేయడానికి కొనసాగవచ్చు.'
-                        : 'You can now proceed to the application. Click the button below to continue.'}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4 p-3.5 rounded-2xl bg-[#FEF3CD]/60 border border-[#D99A24]/20 flex items-start gap-3">
-                  <AlertCircle size={18} className="text-[#D99A24] mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-[#7C5B00]">
-                      {language === 'te'
-                        ? `${missingDocs.length} పత్రం(లు) ఇంకా సిద్ధం కాలేదు`
-                        : `${missingDocs.length} document${missingDocs.length !== 1 ? 's' : ''} still needed`}
-                    </p>
-                    <p className="text-xs text-[#7C5B00]/70 mt-0.5">
-                      {language === 'te'
-                        ? 'దరఖాస్తు చేయడానికి ముందు అన్ని పత్రాలను సిద్ధం చేయండి.'
-                        : 'Prepare all documents before applying. Click each item below to mark it as ready.'}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-5 space-y-2">
+              <div className="space-y-2">
                 {b.documents.map((doc) => {
-                  const ready = storage.isDocumentReady(doc.id, b.id);
+                  const isReady = storage.isDocumentReady(doc.id, b.id);
                   return (
-                    <div 
-                      key={doc.id} 
-                      className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all ${
-                        ready 
-                          ? 'bg-[#E8F5E9] border-[#16856A]/30 text-[#126D57]' 
-                          : 'bg-[#F8FAFC] border-[#E2E6EA] text-[#17212B]'
-                      }`}
-                    >
-                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                        ready ? 'bg-[#16856A] text-white shadow-sm' : 'border-2 border-[#CBD5E1]'
+                    <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl bg-[#FAF8F3] border border-[#E8E3DA]">
+                      <span className="text-xs font-semibold text-[#151719]">{isTe ? doc.nameTe : doc.name}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isReady ? 'bg-[#EAF4F0] text-[#728477]' : 'bg-[#F1EDE4] text-[#151719]'
                       }`}>
-                        {ready && '✓'}
-                      </div>
-                      <span className="text-sm font-semibold flex-1">{language === 'te' ? doc.nameTe : doc.name}</span>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        ready ? 'bg-[#16856A]/20 text-[#16856A]' : 'bg-[#FEF3CD] text-[#7C5B00]'
-                      }`}>
-                        {ready ? t('docs.docReady') : t('docs.docMissing')}
+                        {isReady ? 'Ready' : 'Needed'}
                       </span>
                     </div>
                   );
                 })}
               </div>
-
-              <div className="mt-5 flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => navigate(`/documents/${b.id}`)}
-                  className="btn btn-secondary flex-1 font-semibold"
-                >
-                  <FileText size={16} />
-                  <span>{t('detail.prepareDocuments')}</span>
-                  <ChevronRight size={16} />
-                </button>
-
-                {allDocsReady && (
-                  <button
-                    onClick={handleContinue}
-                    className="btn btn-success flex-1 font-semibold shadow-lg shadow-[#16856A]/25 group"
-                  >
-                    <Send size={16} />
-                    <span>{language === 'te' ? 'దరఖాస్తుకు కొనసాగండి' : 'Continue to application'}</span>
-                    <ArrowRight size={16} className="transform group-hover:translate-x-1 transition-transform" />
-                  </button>
-                )}
-              </div>
             </div>
 
-            {/* Application Steps Journey */}
-            <div className="card p-6 rounded-3xl">
-              <h2 className="text-base font-bold text-[#173B5F] mb-4">{t('detail.applicationJourney')}</h2>
+            {/* Journey Timeline */}
+            <div className="card p-6 rounded-3xl bg-white border border-[#D8CDBB]">
+              <h2 className="text-base font-bold text-[#151719] mb-4">{t('detail.applicationJourney')}</h2>
               <JourneyTimeline
                 steps={[
-                  { label: `01 ${language === 'te' ? 'వివరాలు తనిఖీ చేయండి' : 'Check details'}`, completed: true, current: false },
-                  { label: `02 ${language === 'te' ? 'పత్రాలు సిద్ధం చేయండి' : 'Prepare documents'}`, completed: allDocsReady, current: !allDocsReady },
-                  { label: `03 ${language === 'te' ? 'అధికారికంగా దరఖాస్తు చేయండి' : 'Apply officially'}`, completed: isSubmitted, current: allDocsReady && !isSubmitted },
+                  { label: `01 ${isTe ? 'వివరాలు తనిఖీ చేయండి' : 'Check details'}`, completed: true, current: false },
+                  { label: `02 ${isTe ? 'పత్రాలు సిద్ధం చేయండి' : 'Prepare documents'}`, completed: allDocsReady, current: !allDocsReady },
+                  { label: `03 ${isTe ? 'అధికారికంగా దరఖాస్తు చేయండి' : 'Apply officially'}`, completed: isSubmitted, current: allDocsReady && !isSubmitted },
                 ]}
               />
-              <p className="text-[11px] text-[#9AA5B1] mt-4 leading-relaxed">
-                {language === 'te'
+              <p className="text-[11px] text-[#728477] mt-4 leading-relaxed">
+                {isTe
                   ? 'SevaPath దరఖాస్తు ప్రయాణాన్ని సిద్ధం చేసి నావిగేట్ చేయడంలో సహాయపడుతుంది. తుది సమర్పణ, ధృవీకరణ మరియు నిర్ణయాలు అధికారిక ప్రభుత్వ అధికారం చేతిలో ఉంటాయి.'
                   : 'SevaPath helps you prepare and navigate the application journey. Final submission, verification and decisions are handled by the official government authority.'}
               </p>
@@ -356,50 +276,50 @@ export default function BenefitDetailPage() {
           {/* Sidebar */}
           <div className="space-y-4">
             
-            {/* Primary Action Button — context-aware */}
+            {/* Primary Action Button */}
             {isSubmitted ? (
               <button 
                 onClick={() => navigate('/applications')} 
-                className="btn btn-primary w-full py-4 text-base shadow-lg shadow-[#173B5F]/25 group"
+                className="btn btn-primary w-full py-4 text-base shadow-lg group"
               >
-                <span>{language === 'te' ? 'మీ దరఖాస్తు ట్రాక్ చేయండి' : 'Track Your Application'}</span>
+                <span>{isTe ? 'మీ దరఖాస్తు ట్రాక్ చేయండి' : isHi ? 'आवेदन ट्रैक करें' : 'Track Your Application'}</span>
                 <ArrowRight size={18} className="transform group-hover:translate-x-1 transition-transform" />
               </button>
             ) : allDocsReady ? (
               <button 
                 onClick={handleContinue} 
-                className="btn btn-success w-full py-4 text-base shadow-lg shadow-[#16856A]/25 group"
+                className="btn btn-primary w-full py-4 text-base shadow-lg group"
               >
                 <Send size={18} />
-                <span>{language === 'te' ? 'దరఖాస్తుకు కొనసాగండి' : 'Continue to Application'}</span>
+                <span>{isTe ? 'దరఖాస్తుకు కొనసాగండి' : isHi ? 'आवेदन के लिए आगे बढ़ें' : 'Continue to Application'}</span>
                 <ArrowRight size={18} className="transform group-hover:translate-x-1 transition-transform" />
               </button>
             ) : (
               <button 
                 onClick={() => existingApp ? navigate('/applications') : handleStartApplication()} 
-                className="btn btn-success w-full py-4 text-base shadow-lg shadow-[#16856A]/25 group"
+                className="btn btn-primary w-full py-4 text-base shadow-lg group"
               >
                 <span>{existingApp
-                  ? (language === 'te' ? 'మీ ప్రగతిని చూడండి' : 'View Your Progress')
-                  : (language === 'te' ? 'దరఖాస్తు ప్రారంభించండి' : 'Start Application Track')
+                  ? (isTe ? 'మీ ప్రగతిని చూడండి' : isHi ? 'प्रगति देखें' : 'View Your Progress')
+                  : (isTe ? 'దరఖాస్తు ప్రారంభించండి' : isHi ? 'ट्रैक शुरू करें' : 'Start Application Track')
                 }</span>
                 <ArrowRight size={18} className="transform group-hover:translate-x-1 transition-transform" />
               </button>
             )}
 
-            {/* Why locked — only when Apply is not yet available */}
+            {/* Why locked note */}
             {!allDocsReady && !isSubmitted && (
-              <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2E6EA] text-xs">
+              <div className="p-4 rounded-2xl bg-[#FAF8F3] border border-[#D8CDBB] text-xs">
                 <div className="flex items-start gap-2.5">
                   <Info size={16} className="text-[#D99A24] mt-0.5 shrink-0" />
                   <div>
-                    <p className="font-bold text-[#17212B] mb-1">
-                      {language === 'te' ? 'దరఖాస్తు ఎందుకు అందుబాటులో లేదు?' : 'Why can\'t I apply yet?'}
+                    <p className="font-bold text-[#151719] mb-1">
+                      {isTe ? 'దరఖాస్తు ఎందుకు అందుబాటులో లేదు?' : 'Why can\'t I apply yet?'}
                     </p>
-                    <p className="text-[#66727E] leading-relaxed">
-                      {language === 'te'
-                        ? `మీరు అధికారిక దరఖాస్తు ప్రారంభించడానికి ముందు ${missingDocs.length} పత్రం(లు) సిద్ధం చేయాలి. ముందుగా "పత్రాలు సిద్ధం చేయండి" క్లిక్ చేయండి.`
-                        : `You need to prepare ${missingDocs.length} more document${missingDocs.length !== 1 ? 's' : ''} before starting the official application. Use the "Prepare Documents" button above to mark each document as ready.`}
+                    <p className="text-[#728477] leading-relaxed">
+                      {isTe
+                        ? `మీరు అధికారిక దరఖాస్తు ప్రారంభించడానికి ముందు ${missingDocs.length} పత్రం(లు) సిద్ధం చేయాలి.`
+                        : `You need to prepare ${missingDocs.length} more document${missingDocs.length !== 1 ? 's' : ''} before starting the official application.`}
                     </p>
                   </div>
                 </div>
@@ -407,60 +327,99 @@ export default function BenefitDetailPage() {
             )}
 
             {/* Deadline Tile */}
-            <div className="card p-5 rounded-2xl">
-              <div className="flex items-center gap-2 mb-2 text-[#173B5F]">
-                <Calendar size={16} />
+            <div className="card p-5 rounded-2xl bg-white border border-[#D8CDBB]">
+              <div className="flex items-center gap-2 mb-2 text-[#151719]">
+                <Calendar size={16} className="text-[#B85F45]" />
                 <h3 className="text-xs font-bold uppercase tracking-wider">{t('detail.deadline')}</h3>
               </div>
-              <p className="text-sm font-semibold text-[#17212B]">
-                {b.deadline || t('detail.noDeadline')}
+              <p className="text-sm font-semibold text-[#151719]">
+                {deadlineDisplay}
               </p>
             </div>
 
             {/* Official Source & Verification Tile */}
-            <div className="card p-5 rounded-2xl">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#173B5F] mb-3 flex items-center gap-1.5">
-                <Building2 size={14} />
+            <div className="card p-5 rounded-2xl bg-white border border-[#D8CDBB]">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#151719] mb-3 flex items-center gap-1.5">
+                <Building2 size={14} className="text-[#728477]" />
                 <span>{t('detail.officialSource')}</span>
               </h3>
               <div className="space-y-2 text-xs">
                 <div>
-                  <span className="text-[#9AA5B1] font-medium">{t('detail.department')}</span>
-                  <p className="text-[#17212B] font-semibold mt-0.5">{dept}</p>
+                  <span className="text-[#728477] font-medium">{t('detail.department')}</span>
+                  <p className="text-[#151719] font-semibold mt-0.5">{dept}</p>
                 </div>
                 <div>
-                  <span className="text-[#9AA5B1] font-medium">{t('detail.lastVerified')}</span>
-                  <p className="text-[#16856A] font-bold mt-0.5 flex items-center gap-1">
-                    <ShieldCheck size={12} /> {b.lastVerified}
+                  <span className="text-[#728477] font-medium">{t('detail.lastVerified')}</span>
+                  <p className="text-[#728477] font-bold mt-0.5 flex items-center gap-1">
+                    <ShieldCheck size={12} className="text-[#728477]" /> {b.lastVerified}
                   </p>
                 </div>
               </div>
+
+              {/* Verified External Buttons */}
               <div className="mt-4 space-y-2">
-                <a 
-                  href={b.officialApplicationUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="btn btn-secondary btn-sm w-full text-xs"
-                >
-                  <ExternalLink size={13} /> {t('detail.viewSource')}
-                </a>
+                {hasAppUrl ? (
+                  <a 
+                    href={b.officialApplicationUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="btn btn-secondary btn-sm w-full text-xs"
+                  >
+                    <ExternalLink size={13} />
+                    <span>Open official application</span>
+                  </a>
+                ) : null}
+
+                {hasInfoUrl ? (
+                  <a 
+                    href={b.officialInfoUrl || b.sourceUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="btn btn-ghost btn-sm w-full text-xs border border-[#D8CDBB]"
+                  >
+                    <ExternalLink size={13} />
+                    <span>Official information</span>
+                  </a>
+                ) : null}
+
+                {!hasAppUrl && !hasInfoUrl && (
+                  <p className="text-xs text-[#728477] p-2 bg-[#F1EDE4] rounded-xl text-center font-medium">
+                    Check the official department: {b.departmentName || b.department}
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Demo Notice */}
-            {b.isDemoData && (
-              <div className="p-3.5 rounded-2xl text-xs bg-[#FEF3CD] text-[#7C5B00] border border-[#D99A24]/30">
-                <div className="flex items-start gap-2">
-                  <Info size={14} className="mt-0.5 shrink-0" />
-                  <p>{t('detail.demoNotice')}</p>
-                </div>
+            {/* Helpline Box */}
+            <div className="card p-5 rounded-2xl bg-[#FAF8F3] border border-[#D8CDBB]">
+              <div className="flex items-center gap-2 mb-2 text-[#151719]">
+                <Phone size={16} className="text-[#B85F45]" />
+                <h3 className="text-xs font-bold uppercase tracking-wider">
+                  {isTe ? 'సహాయం కావాలా?' : isHi ? 'सहायता चाहिए?' : 'Need Help?'}
+                </h3>
               </div>
-            )}
+              <p className="text-xs text-[#728477] mb-2 leading-relaxed">
+                {isTe
+                  ? 'ప్రశ్నల కోసం అధికారిక శాఖ హెల్ప్‌లైన్‌ను సంప్రదించండి:'
+                  : 'Contact the verified department helpline for scheme queries:'}
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#151719] font-mono">
+                  {b.helpline?.number || '1800-11-0031 / 1100'}
+                </span>
+                <button
+                  onClick={() => navigate('/help')}
+                  className="text-xs font-bold text-[#B85F45] hover:underline"
+                >
+                  View /help
+                </button>
+              </div>
+            </div>
 
             {/* Trust disclaimer */}
-            <div className="p-4 rounded-2xl border border-[#E2E6EA] text-xs text-[#66727E] bg-white/60">
+            <div className="p-4 rounded-2xl border border-[#D8CDBB] text-xs text-[#728477] bg-white">
               <div className="flex items-start gap-2">
-                <Shield size={14} className="mt-0.5 text-[#16856A] shrink-0" />
+                <Shield size={14} className="mt-0.5 text-[#728477] shrink-0" />
                 <p>{t('detail.basedOn')}</p>
               </div>
             </div>
@@ -475,8 +434,8 @@ export default function BenefitDetailPage() {
 function QuickFact({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <span className="text-[11px] font-medium text-[#9AA5B1] uppercase tracking-wider">{label}</span>
-      <div className="text-xs font-bold text-[#17212B] mt-1">{value}</div>
+      <span className="text-[11px] font-medium text-[#728477] uppercase tracking-wider">{label}</span>
+      <div className="text-xs font-bold text-[#151719] mt-1">{value}</div>
     </div>
   );
 }

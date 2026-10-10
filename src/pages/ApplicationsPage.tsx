@@ -1,54 +1,97 @@
 // ============================================================
-// SevaPath — Application Tracker Page
-// ============================================================
-// User-managed tracker. SevaPath only knows the steps up to
-// "Application started". Submitted / Verification / Decision are
-// changed ONLY when the user clicks the matching button.
+// SevaPath — Citizen Application Journey Tracker
+// Stages: Started → Documents ready → Submitted → Under verification → Decision
+// User-managed beyond step 2. SevaPath never auto-advances.
 // ============================================================
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
-import { JourneyTimeline, EmptyState } from '../components/UI';
-import type { TrackedApplication } from '../types';
+import { EmptyState } from '../components/UI';
 import { getBenefitById } from '../data/benefits';
-import * as storage from '../services/storage';
-import { isOpenableUrl, openOfficialApplication, continueToApplication } from '../services/startApplication';
+import { isOpenableUrl, openOfficialApplication } from '../services/startApplication';
+import type { TrackedApplication, CivicApplicationStage, CivicDecisionOutcome } from '../types';
 import {
-  STAGES, STARTED, VERIFICATION, DECISION, COMPLETE,
-  getStage, stageUpdates, statusLabel, nextStepText,
-} from '../services/applicationJourney';
-import {
-  Search, ChevronDown, ChevronUp, ArrowRight, ExternalLink,
-  Bell, FileText, Check, Info, Trash2,
-  Sparkles, ShieldCheck, Calendar, Download, HardDrive
+  FileText, ArrowRight, ExternalLink, Trash2, Calendar,
+  ShieldCheck, Info, Sparkles, ChevronDown, ChevronUp,
+  Search, Check, Clock, Edit2, RotateCcw
 } from 'lucide-react';
 
-export default function ApplicationsPage() {
-  const { t, language, applications, addApplication, updateApplication, removeApplication } = useApp();
-  const navigate = useNavigate();
-  const te = language === 'te';
-  const [expandedApp, setExpandedApp] = useState<string | null>(applications[0]?.id || null);
-  const [reminderSet, setReminderSet] = useState<Record<string, string>>({});
+const STAGES: { key: CivicApplicationStage; en: string; te: string; hi: string; isUserSet: boolean }[] = [
+  { key: 'started', en: 'Started', te: 'ప్రారంభమైంది', hi: 'आरंभ हुआ', isUserSet: false },
+  { key: 'documents-ready', en: 'Documents ready', te: 'పత్రాలు సిద్ధమయ్యాయి', hi: 'दस्तावेज तैयार', isUserSet: false },
+  { key: 'submitted', en: 'Submitted', te: 'సమర్పించబడింది', hi: 'जमा किया गया', isUserSet: true },
+  { key: 'under-verification', en: 'Under verification', te: 'ధృవీకరణలో ఉంది', hi: 'सत्यापन प्रक्रिया में', isUserSet: true },
+  { key: 'decision', en: 'Decision', te: 'నిర్ణయం', hi: 'निर्णय', isUserSet: true },
+];
 
-  const setReminder = (appId: string, when: string) => {
-    setReminderSet((prev) => ({ ...prev, [appId]: when }));
+export default function ApplicationsPage() {
+  const { t, language, applications, updateApplication, removeApplication } = useApp();
+  const navigate = useNavigate();
+  const [expandedApp, setExpandedApp] = useState<string | null>(null);
+  const [editingDatesApp, setEditingDatesApp] = useState<string | null>(null);
+
+  const isTe = language === 'te';
+  const isHi = language === 'hi';
+
+  const getStageIndex = (app: TrackedApplication): number => {
+    if (app.civicStage) {
+      const idx = STAGES.findIndex((s) => s.key === app.civicStage);
+      return idx >= 0 ? idx : 0;
+    }
+    // Fallback based on legacy stage/status
+    if (app.status === 'decision-received' || app.status === 'approved' || app.status === 'rejected') return 4;
+    if (app.status === 'verification') return 3;
+    if (app.status === 'submitted') return 2;
+    if (app.status === 'documents-ready') return 1;
+    return 0;
   };
 
-  // User-controlled milestone change (persisted by AppContext)
-  const moveTo = (app: TrackedApplication, stage: number) => {
-    const updates = stageUpdates(app, stage);
-    storage.updateApplication(app.id, updates);
-    updateApplication(app.id, updates);
+  const handleAdvanceStage = (app: TrackedApplication) => {
+    const currentIndex = getStageIndex(app);
+    if (currentIndex >= STAGES.length - 1) return;
+    const nextStage = STAGES[currentIndex + 1].key;
+    const today = new Date().toISOString().split('T')[0];
+
+    updateApplication(app.id, {
+      civicStage: nextStage,
+      status: nextStage === 'decision' ? 'decision-received' : nextStage === 'under-verification' ? 'verification' : nextStage,
+      submittedDate: nextStage === 'submitted' ? today : app.submittedDate,
+      verificationDate: nextStage === 'under-verification' ? today : app.verificationDate,
+      decisionDate: nextStage === 'decision' ? today : app.decisionDate,
+      civicDecision: nextStage === 'decision' ? (app.civicDecision || 'waiting') : app.civicDecision,
+    });
+  };
+
+  const handleRewindStage = (app: TrackedApplication) => {
+    const currentIndex = getStageIndex(app);
+    if (currentIndex <= 0) return;
+    const prevStage = STAGES[currentIndex - 1].key;
+
+    updateApplication(app.id, {
+      civicStage: prevStage,
+      status: prevStage === 'documents-ready' ? 'documents-ready' : prevStage === 'started' ? 'preparing' : prevStage,
+    });
+  };
+
+  const handleUpdateDecision = (app: TrackedApplication, decision: CivicDecisionOutcome) => {
+    updateApplication(app.id, {
+      civicDecision: decision,
+      status: decision === 'approved' ? 'approved' : decision === 'rejected' ? 'rejected' : 'decision-received',
+    });
+  };
+
+  const handleSaveNote = (app: TrackedApplication, note: string) => {
+    updateApplication(app.id, { userNotes: note });
   };
 
   if (applications.length === 0) {
     return (
       <div className="min-h-[80vh] pb-20 md:pb-12">
-        <div className="max-w-2xl mx-auto px-4 md:px-6 py-12">
-          <div className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-extrabold text-[#173B5F] mb-1">{t('tracker.title')}</h1>
-            <p className="text-sm text-[#66727E]">{t('tracker.subtitle')}</p>
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-12">
+          <div className="mb-8">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-[#151719] mb-1">{t('tracker.title')}</h1>
+            <p className="text-sm text-[#728477]">{t('tracker.subtitle')}</p>
           </div>
           <EmptyState
             icon={<FileText size={48} />}
@@ -70,254 +113,252 @@ export default function ApplicationsPage() {
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-12">
 
         {/* Header */}
-        <div className="mb-8 animate-fade-in">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#16856A]/10 text-[#16856A] text-xs font-bold mb-2.5">
-            <ShieldCheck size={14} />
-            <span>{te ? 'మీరు నిర్వహించే ట్రాకర్' : 'Self-managed tracking'}</span>
+        <div className="mb-6 animate-fade-in">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#728477]/10 text-[#728477] text-xs font-bold mb-2.5">
+            <ShieldCheck size={14} className="text-[#B85F45]" />
+            <span>{isTe ? 'మీరు నిర్వహించే పౌర ట్రాకర్' : isHi ? 'नागरिक स्व-प्रबंधित ट्रैकर' : 'Self-managed civic tracker'}</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-[#173B5F] mb-1">{t('tracker.title')}</h1>
-          <p className="text-sm text-[#66727E]">{t('tracker.subtitle')}</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-[#151719] mb-1">{t('tracker.title')}</h1>
+          <p className="text-sm text-[#728477]">{t('tracker.subtitle')}</p>
         </div>
 
-        {/* Trust notice */}
-        <div className="p-4 rounded-2xl mb-6 bg-white/80 backdrop-blur-md border border-[#E2E6EA] flex items-start gap-3 text-xs text-[#66727E]">
-          <Info size={16} className="mt-0.5 shrink-0 text-[#173B5F]" />
+        {/* Trust & Independence Banner */}
+        <div className="p-4 rounded-2xl mb-6 bg-[#FAF8F3] border border-[#D8CDBB] flex items-start gap-3 text-xs text-[#30364F]">
+          <Info size={16} className="mt-0.5 shrink-0 text-[#B85F45]" />
           <div className="space-y-1">
-            <span className="font-bold text-[#17212B] block">
-              {te
-                ? 'SevaPath ప్రత్యక్ష ప్రభుత్వ స్థితి అప్‌డేట్‌లను అందుకోదు. ఈ దశలను మీరే నిర్వహిస్తారు.'
-                : 'SevaPath does not receive live government status updates. You manage these milestones yourself.'}
+            <span className="font-bold text-[#151719] block">
+              {isTe
+                ? 'మీరు నవీకరించినది. SevaPath మీ అధికారిక స్థితిని చూడలేదు.'
+                : isHi
+                ? 'आपके द्वारा अपडेट किया गया। SevaPath आपकी आधिकारिक स्थिति नहीं देख सकता।'
+                : 'Updated by you. SevaPath cannot see your official status.'}
             </span>
-            <span className="block">
-              {te
-                ? 'SevaPath దరఖాస్తు ప్రయాణాన్ని సిద్ధం చేసి నావిగేట్ చేయడంలో సహాయపడుతుంది. తుది సమర్పణ, ధృవీకరణ మరియు నిర్ణయాలు అధికారిక ప్రభుత్వ అధికారం చేతిలో ఉంటాయి.'
-                : 'SevaPath helps you prepare and navigate the application journey. Final submission, verification and decisions are handled by the official government authority.'}
-            </span>
+            <p className="text-[#728477] leading-relaxed">
+              {isTe
+                ? 'దరఖాస్తు సమర్పణ, విచారణ మరియు తుది నిర్ణయాలు ప్రభుత్వ అధికారుల పరిధిలో ఉంటాయి. మీ పురోగతిని ట్రాక్ చేయడానికి ఈ మైలురాళ్లను మీరే నవీకరించండి.'
+                : isHi
+                ? 'आवेदन जमा करना और अंतिम निर्णय सरकारी विभागों के अधीन हैं। अपनी प्रगति याद रखने के लिए इसे स्वयं अपडेट करें।'
+                : 'Official application decisions are made exclusively by government departments. Mark these milestones manually to keep your personal records organised.'}
+            </p>
           </div>
         </div>
 
-        {/* Tracked Applications Stack */}
-        <div className="space-y-4">
+        {/* Applications List */}
+        <div className="space-y-5">
           {applications.map((app) => {
-            const expanded = expandedApp === app.id;
             const benefit = getBenefitById(app.benefitId);
-            const url = benefit?.officialApplicationUrl;
-            const canOpen = isOpenableUrl(url);
-            const appName = te ? app.benefitNameTe : app.benefitName;
+            const appName = isTe ? app.benefitNameTe : isHi ? (app.benefitNameHi || app.benefitName) : app.benefitName;
+            const stageIdx = getStageIndex(app);
+            const currentStageObj = STAGES[stageIdx];
+            const expanded = expandedApp === app.id;
+            const isEditingDates = editingDatesApp === app.id;
 
-            // Effective stage: documents may have become ready since the app was saved
-            const savedStage = getStage(app);
-            const docsReady = !!benefit && benefit.documents.length > 0 &&
-              benefit.documents.every((d) => storage.isDocumentReady(d.id, benefit.id));
-            const stage = savedStage < STARTED && docsReady ? Math.max(savedStage, 2) : savedStage;
-            const statusText = stage < STARTED && stage >= 2
-              ? statusLabel('documents-ready', language)
-              : statusLabel(app.status, language);
-            const inProgress = stage < COMPLETE;
-            const nextText = nextStepText(stage, language);
-
-            const steps = STAGES.map((s, i) => {
-              const base = te ? s.te : s.en;
-              const date = app.stageDates?.[i];
-              const pendingUser = s.userAction && i >= stage;
-              const suffix = pendingUser ? (te ? ' — మీ చర్య' : ' — your action') : (date && i < stage ? ` — ${date}` : '');
-              return { label: `${base}${suffix}`, completed: i < stage, current: i === stage || (stage === STARTED && i === STARTED) };
-            });
-
-            const continueApp = () => continueToApplication({
-              benefit: benefit!,
-              existing: app,
-              addApplication,
-              updateApplication,
-              navigate,
-            });
+            const officialUrl = app.officialStatusUrl || benefit?.officialStatusUrl || benefit?.officialApplicationUrl;
+            const hasOfficialStatusUrl = isOpenableUrl(officialUrl);
 
             return (
               <div
                 key={app.id}
-                className="card p-0 overflow-hidden rounded-3xl border border-[#E2E6EA] shadow-md transition-all duration-300 animate-fade-in"
+                className="card p-0 rounded-3xl border border-[#D8CDBB] bg-[#FAF8F3] overflow-hidden shadow-xs hover:shadow-md transition-all"
               >
-                {/* Header Tile */}
-                <div
-                  className="p-5 sm:p-6 cursor-pointer hover:bg-[#F8FAFC]/60 transition-colors"
-                  onClick={() => setExpandedApp(expanded ? null : app.id)}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className="text-[10px] font-bold text-[#66727E] uppercase tracking-wider px-2 py-0.5 rounded bg-[#F0F2F4]">
-                          {t(`cat.${app.category}` as any)}
-                        </span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#16856A]">
-                          {inProgress
-                            ? (te ? 'దరఖాస్తు పురోగతిలో ఉంది' : 'Application in progress')
-                            : (te ? 'పూర్తయింది' : 'Journey complete')}
-                        </span>
-                      </div>
-
-                      <h3 className="text-base font-bold text-[#17212B] mt-1">{appName}</h3>
-                      <div className="flex items-center gap-3 text-xs text-[#9AA5B1] mt-1 flex-wrap">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar size={13} />
-                          {te ? 'ప్రారంభం' : 'Started on'} {app.startedDate}
-                        </span>
-                      </div>
-                      <div className="mt-2 text-xs">
-                        <span className="text-[#9AA5B1] font-medium">{te ? 'స్థితి: ' : 'Status: '}</span>
-                        <span className="font-bold text-[#173B5F]">{statusText}</span>
-                      </div>
+                {/* Main Card Content */}
+                <div className="p-5 sm:p-6">
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#B85F45] block mb-1">
+                        Application #{app.id.slice(-6)}
+                      </span>
+                      <h2 className="text-base sm:text-lg font-bold text-[#151719] leading-snug">
+                        {appName}
+                      </h2>
                     </div>
 
-                    <div className="w-8 h-8 rounded-full bg-[#F0F2F4] flex items-center justify-center text-[#66727E] shrink-0">
-                      {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    <button
+                      onClick={() => removeApplication(app.id)}
+                      className="text-[#728477] hover:text-[#B85F45] p-1.5 rounded-lg transition-colors"
+                      aria-label="Remove tracked application"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+
+                  {/* 5-Stage Stepper Bar */}
+                  <div className="my-5">
+                    <div className="grid grid-cols-5 gap-1 sm:gap-2 mb-2">
+                      {STAGES.map((s, idx) => {
+                        const isDone = idx < stageIdx;
+                        const isCurrent = idx === stageIdx;
+                        return (
+                          <div key={s.key} className="flex flex-col items-center">
+                            <div
+                              className={`w-full h-2 rounded-full transition-all ${
+                                isDone
+                                  ? 'bg-[#728477]'
+                                  : isCurrent
+                                  ? 'bg-[#B85F45]'
+                                  : 'bg-[#D8CDBB]/50'
+                              }`}
+                            />
+                            <span
+                              className={`text-[9px] sm:text-[10px] mt-1.5 text-center font-bold truncate max-w-full ${
+                                isCurrent
+                                  ? 'text-[#B85F45]'
+                                  : isDone
+                                  ? 'text-[#151719]'
+                                  : 'text-[#728477]'
+                              }`}
+                            >
+                              {isTe ? s.te : isHi ? s.hi : s.en}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                </div>
 
-                {/* NEXT STEP — always visible so the user knows what to do now */}
-                <div className="px-5 sm:px-6 pb-5 sm:pb-6">
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-[#EAF2F8] to-white border border-[#173B5F]/20">
-                    <div className="flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-xl bg-[#173B5F] text-white flex items-center justify-center shrink-0">
-                        <ArrowRight size={14} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#173B5F] block">
-                          {t('tracker.nextStep')}
-                        </span>
-                        <p className="text-sm font-semibold text-[#17212B]">{nextText}</p>
-                      </div>
+                  {/* Stage Summary & Decision if at stage 4 */}
+                  <div className="p-3.5 rounded-2xl bg-white border border-[#E8E3DA] flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-2">
+                      <Clock size={15} className="text-[#B85F45]" />
+                      <span className="text-xs font-bold text-[#151719]">
+                        Current Stage: {isTe ? currentStageObj.te : isHi ? currentStageObj.hi : currentStageObj.en}
+                      </span>
                     </div>
 
-                    <div className="mt-4 flex flex-col sm:flex-row gap-2.5">
-                      {stage < 2 && (
-                        <button
-                          onClick={() => navigate(`/documents/${app.benefitId}`)}
-                          className="btn btn-primary flex-1 text-sm"
-                        >
-                          <FileText size={15} />
-                          <span>{te ? 'పత్రాలు సిద్ధం చేయండి' : 'Prepare documents'}</span>
-                        </button>
-                      )}
-
-                      {stage === 2 && benefit && (
-                        <button onClick={continueApp} className="btn btn-success flex-1 text-sm">
-                          <span>{te ? 'దరఖాస్తుకు కొనసాగండి' : 'Continue to application'}</span>
-                          <ArrowRight size={15} />
-                        </button>
-                      )}
-
-                      {stage >= STARTED && stage < VERIFICATION && (
-                        <>
+                    {stageIdx === 4 && (
+                      <div className="flex items-center gap-1.5">
+                        {(['approved', 'waiting', 'rejected'] as CivicDecisionOutcome[]).map((d) => (
                           <button
-                            onClick={() => openOfficialApplication(url)}
-                            disabled={!canOpen}
-                            className="btn btn-primary flex-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            key={d}
+                            onClick={() => handleUpdateDecision(app, d)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold capitalize transition-all ${
+                              app.civicDecision === d
+                                ? d === 'approved'
+                                  ? 'bg-[#728477] text-white'
+                                  : d === 'rejected'
+                                  ? 'bg-[#B85F45] text-white'
+                                  : 'bg-[#D99A24] text-white'
+                                : 'bg-[#F1EDE4] text-[#728477] hover:bg-[#D8CDBB]'
+                            }`}
                           >
-                            <span>{te ? 'అధికారిక దరఖాస్తు తెరవండి' : 'Open official application'}</span>
-                            <ExternalLink size={15} />
+                            {d}
                           </button>
-                          <button
-                            onClick={() => moveTo(app, VERIFICATION)}
-                            className="btn btn-secondary flex-1 text-sm"
-                          >
-                            <Check size={15} />
-                            <span>{te ? 'నేను నా దరఖాస్తును సమర్పించాను' : 'I have submitted my application'}</span>
-                          </button>
-                        </>
-                      )}
-
-                      {stage === VERIFICATION && (
-                        <button onClick={() => moveTo(app, DECISION)} className="btn btn-success flex-1 text-sm">
-                          <Check size={15} />
-                          <span>{te ? 'ధృవీకరించబడినట్లు గుర్తించండి' : 'Mark as verified'}</span>
-                        </button>
-                      )}
-
-                      {stage === DECISION && (
-                        <button onClick={() => moveTo(app, COMPLETE)} className="btn btn-success flex-1 text-sm">
-                          <Check size={15} />
-                          <span>{te ? 'నిర్ణయం అందిందని గుర్తించండి' : 'Mark decision received'}</span>
-                        </button>
-                      )}
-
-                      {stage > STARTED && canOpen && (
-                        <button
-                          onClick={() => openOfficialApplication(url)}
-                          className="btn btn-secondary flex-1 text-sm"
-                        >
-                          <span>{te ? 'అధికారిక దరఖాస్తు తెరవండి' : 'Open official application'}</span>
-                          <ExternalLink size={15} />
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => navigate(`/benefit/${app.benefitId}`)}
-                        className="btn btn-ghost flex-1 text-sm"
-                      >
-                        <span>{te ? 'ప్రయోజనం చూడండి' : 'View benefit'}</span>
-                      </button>
-                    </div>
-
-                    {stage >= STARTED && stage < VERIFICATION && !canOpen && (
-                      <p className="text-[11px] text-[#7C5B00] mt-2">
-                        {te
-                          ? 'ఈ ప్రయోజనానికి అధికారిక దరఖాస్తు లింక్ ఇంకా సెట్ చేయలేదు.'
-                          : 'No official application link is configured for this benefit yet.'}
-                      </p>
+                        ))}
+                      </div>
                     )}
                   </div>
-                </div>
 
-                {/* Expanded Timeline & Details */}
-                {expanded && (
-                  <div className="border-t border-[#E2E6EA] p-5 sm:p-6 bg-[#F8FAFC] animate-fade-in space-y-6">
+                  {/* Controls: Next, Back, Edit Dates */}
+                  <div className="mt-4 pt-4 border-t border-[#E8E3DA] flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      {stageIdx > 0 && (
+                        <button
+                          onClick={() => handleRewindStage(app)}
+                          className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-[#D8CDBB] bg-white text-xs font-bold text-[#728477] hover:bg-[#F1EDE4] transition-colors"
+                        >
+                          <RotateCcw size={12} />
+                          <span>Back</span>
+                        </button>
+                      )}
 
-                    {/* Journey Timeline */}
-                    <div className="p-4 rounded-2xl bg-white border border-[#E2E6EA]">
-                      <h4 className="text-xs font-bold text-[#173B5F] uppercase tracking-wider mb-4 flex items-center gap-1.5">
-                        <Sparkles size={14} className="text-[#D99A24]" />
-                        <span>{t('tracker.timeline')}</span>
-                      </h4>
-                      <JourneyTimeline steps={steps} />
-                    </div>
-
-                    {/* Follow-up Reminder */}
-                    <div className="p-4 rounded-2xl bg-white border border-[#E2E6EA]">
-                      <h4 className="text-xs font-bold text-[#173B5F] uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                        <Bell size={13} className="text-[#16856A]" />
-                        <span>{t('tracker.setReminder')}</span>
-                      </h4>
-
-                      {reminderSet[app.id] ? (
-                        <div className="p-3 rounded-xl bg-[#E8F5E9] text-[#126D57] text-xs font-bold flex items-center gap-2">
-                          <Check size={16} className="stroke-[3]" />
-                          <span>{t('tracker.reminderSet')} — {reminderSet[app.id]}</span>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2 flex-wrap">
-                          <button onClick={() => setReminder(app.id, t('tracker.tomorrow'))} className="btn btn-secondary btn-sm text-xs">
-                            {t('tracker.tomorrow')}
-                          </button>
-                          <button onClick={() => setReminder(app.id, t('tracker.in3Days'))} className="btn btn-secondary btn-sm text-xs">
-                            {t('tracker.in3Days')}
-                          </button>
-                          <button onClick={() => setReminder(app.id, t('tracker.nextWeek'))} className="btn btn-secondary btn-sm text-xs">
-                            {t('tracker.nextWeek')}
-                          </button>
-                        </div>
+                      {stageIdx < STAGES.length - 1 && (
+                        <button
+                          onClick={() => handleAdvanceStage(app)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#151719] text-white text-xs font-bold hover:bg-[#30364F] transition-all shadow-2xs"
+                        >
+                          <span>Next Stage</span>
+                          <ArrowRight size={13} />
+                        </button>
                       )}
                     </div>
 
-                    {/* Footer */}
-                    <div className="flex items-center justify-end pt-2">
+                    <div className="flex items-center gap-2">
+                      {hasOfficialStatusUrl && (
+                        <a
+                          href={officialUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#B85F45] text-white text-xs font-bold hover:bg-[#a05038] transition-all"
+                        >
+                          <span>Open official status page</span>
+                          <ExternalLink size={12} />
+                        </a>
+                      )}
+
                       <button
-                        onClick={() => removeApplication(app.id)}
-                        className="btn btn-ghost btn-sm text-xs text-[#C94A4A] hover:bg-[#FDE8E8]"
+                        onClick={() => setExpandedApp(expanded ? null : app.id)}
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-[#728477] hover:bg-[#F1EDE4]"
                       >
-                        <Trash2 size={14} />
-                        <span>{te ? 'తొలగించు' : 'Remove'}</span>
+                        <span>{expanded ? 'Hide Details' : 'Milestone Notes & Dates'}</span>
+                        {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expanded Details: Milestone Dates & Notes */}
+                {expanded && (
+                  <div className="border-t border-[#D8CDBB] p-5 sm:p-6 bg-white space-y-4 animate-fade-in">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#151719]">
+                        Milestone Dates & Private Notes
+                      </h3>
+                      <button
+                        onClick={() => setEditingDatesApp(isEditingDates ? null : app.id)}
+                        className="text-xs font-bold text-[#B85F45] flex items-center gap-1 hover:underline"
+                      >
+                        <Edit2 size={12} />
+                        <span>{isEditingDates ? 'Done Editing' : 'Edit Dates'}</span>
+                      </button>
+                    </div>
+
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      <div className="p-3 rounded-xl bg-[#FAF8F3] border border-[#E8E3DA]">
+                        <span className="text-[10px] font-bold text-[#728477] uppercase block mb-1">Started Date</span>
+                        <span className="text-xs font-bold text-[#151719]">{app.startedDate || '—'}</span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-[#FAF8F3] border border-[#E8E3DA]">
+                        <span className="text-[10px] font-bold text-[#728477] uppercase block mb-1">Submitted Date</span>
+                        {isEditingDates ? (
+                          <input
+                            type="date"
+                            value={app.submittedDate || ''}
+                            onChange={(e) => updateApplication(app.id, { submittedDate: e.target.value })}
+                            className="w-full text-xs p-1 border rounded"
+                          />
+                        ) : (
+                          <span className="text-xs font-bold text-[#151719]">{app.submittedDate || 'Not recorded yet'}</span>
+                        )}
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-[#FAF8F3] border border-[#E8E3DA]">
+                        <span className="text-[10px] font-bold text-[#728477] uppercase block mb-1">Decision Date</span>
+                        {isEditingDates ? (
+                          <input
+                            type="date"
+                            value={app.decisionDate || ''}
+                            onChange={(e) => updateApplication(app.id, { decisionDate: e.target.value })}
+                            className="w-full text-xs p-1 border rounded"
+                          />
+                        ) : (
+                          <span className="text-xs font-bold text-[#151719]">{app.decisionDate || 'Not recorded yet'}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Private User Note */}
+                    <div>
+                      <label className="text-[11px] font-bold text-[#728477] uppercase block mb-1">
+                        Application Reference / Notes (stays on device)
+                      </label>
+                      <textarea
+                        rows={2}
+                        defaultValue={app.userNotes || ''}
+                        onBlur={(e) => handleSaveNote(app, e.target.value)}
+                        placeholder="e.g., Application Ref: NSP-2025-9876, submitted at MeeSeva center."
+                        className="w-full p-2.5 rounded-xl border border-[#D8CDBB] bg-[#FAF8F3] text-xs text-[#151719] focus:outline-none focus:ring-1 focus:ring-[#B85F45]"
+                      />
                     </div>
                   </div>
                 )}
@@ -325,31 +366,6 @@ export default function ApplicationsPage() {
             );
           })}
         </div>
-
-        {/* Local storage note */}
-        <div className="mt-10 p-5 rounded-3xl bg-[#FAF8F3] border border-[#D8CDBB] flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#F1EDE4] text-[#30364F] flex items-center justify-center shrink-0">
-              <HardDrive size={18} />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-[#151719]">
-                {te ? 'అన్ని దరఖాస్తులు మీ బ్రౌజర్‌లో మాత్రమే సేవ్ చేయబడతాయి' : 'All application journeys are stored locally on this device'}
-              </p>
-              <p className="text-[11px] text-[#728477]">
-                {te ? 'సర్వర్ లేదా క్లౌడ్ నిల్వ లేదు. మీ గోప్యత సంరక్షించబడుతుంది.' : 'Zero cloud logging. You can backup your profile & applications anytime in Profile.'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => navigate('/profile')}
-            className="btn bg-[#30364F] text-white hover:bg-[#151719] btn-sm text-xs shrink-0 rounded-xl"
-          >
-            <span>{te ? 'డేటాను నిర్వహించండి' : 'Manage & Backup'}</span>
-            <ArrowRight size={13} />
-          </button>
-        </div>
-
       </div>
     </div>
   );

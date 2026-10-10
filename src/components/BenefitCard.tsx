@@ -14,13 +14,15 @@ import {
   GraduationCap, Briefcase, Wallet, Home as HomeIcon,
   Wheat, Heart, Users, Store, ArrowRight, ShieldCheck,
   ExternalLink, BookmarkPlus, BookmarkCheck, Calendar,
-  AlertCircle, HelpCircle
+  AlertCircle, HelpCircle, Info
 } from 'lucide-react';
 
 const categoryMeta: Record<CategoryId, { color: string; bg: string; icon: React.ReactNode }> = {
   education: { color: '#B85F45', bg: '#F1EDE4', icon: <GraduationCap size={16} /> },
+  scholarships: { color: '#B85F45', bg: '#F1EDE4', icon: <GraduationCap size={16} /> },
   'jobs-skills': { color: '#151719', bg: '#F1EDE4', icon: <Briefcase size={16} /> },
   'financial-support': { color: '#30364F', bg: '#F1EDE4', icon: <Wallet size={16} /> },
+  'loans-finance': { color: '#30364F', bg: '#F1EDE4', icon: <Wallet size={16} /> },
   housing: { color: '#B85F45', bg: '#F1EDE4', icon: <HomeIcon size={16} /> },
   farming: { color: '#728477', bg: '#F1EDE4', icon: <Wheat size={16} /> },
   health: { color: '#B85F45', bg: '#F1EDE4', icon: <Heart size={16} /> },
@@ -32,13 +34,15 @@ export default function BenefitCard({ result }: { result: MatchResult }) {
   const { t, language, applications, addApplication } = useApp();
   const navigate = useNavigate();
   const b = result.benefit;
-  const te = language === 'te';
+
+  const isTe = language === 'te';
+  const isHi = language === 'hi';
 
   const isTracked = applications.some((a) => a.benefitId === b.id);
   const [justTracked, setJustTracked] = useState(false);
 
-  const name = te ? b.nameTe : b.name;
-  const benefitText = te ? b.benefitTe : b.benefit;
+  const name = isTe ? b.nameTe : isHi ? (b.nameHi || b.name) : b.name;
+  const benefitText = isTe ? b.benefitTe : isHi ? (b.benefitHi || b.benefit) : b.benefit;
   const catLabel = t(`cat.${b.category}` as any);
   const cat = categoryMeta[b.category] || categoryMeta.education;
   const isLikely = result.status === 'likely';
@@ -51,7 +55,14 @@ export default function BenefitCard({ result }: { result: MatchResult }) {
     setJustTracked(true);
   };
 
-  const hasOfficialUrl = Boolean(b.officialApplicationUrl && b.officialApplicationUrl !== '#demo');
+  const hasAppUrl = Boolean(b.officialApplicationUrl && b.officialApplicationUrl !== '#demo');
+  const hasInfoUrl = Boolean((b.officialInfoUrl || b.sourceUrl) && (b.officialInfoUrl || b.sourceUrl) !== '#demo');
+
+  const deadlineLabel = b.deadline
+    ? b.deadline === 'rolling'
+      ? (isTe ? 'అప్లికేషన్లు తెరిచి ఉన్నాయి (రోలింగ్)' : isHi ? 'आवेदन खुले हैं (रोलिंग)' : 'Applications open (rolling)')
+      : b.deadline
+    : (isTe ? 'గడువు కోసం అధికారిక పోర్టల్ తనిఖీ చేయండి' : isHi ? 'समय सीमा के लिए पोर्टल देखें' : 'Check the official portal for current deadline');
 
   return (
     <div 
@@ -70,7 +81,7 @@ export default function BenefitCard({ result }: { result: MatchResult }) {
         <div className="flex items-start justify-between gap-3 mb-3 pt-1">
           <div className="flex items-center gap-2">
             <span 
-              className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 shadow-xs"
+              className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 shadow-2xs"
               style={{ background: cat.bg, color: cat.color }}
             >
               {cat.icon}
@@ -83,13 +94,13 @@ export default function BenefitCard({ result }: { result: MatchResult }) {
         </div>
 
         {/* Title */}
-        <h3 className="text-base font-bold text-[#151719] group-hover:text-[#B85F45] transition-colors mb-2 leading-snug">
+        <h3 className="text-base font-bold text-[#151719] group-hover:text-[#B85F45] transition-colors mb-1.5 leading-snug">
           {name}
         </h3>
 
         {/* Department / Provider */}
         <div className="text-[11px] text-[#728477] mb-2 font-medium flex items-center gap-1.5 flex-wrap">
-          <span>{te ? b.departmentTe : b.department}</span>
+          <span>{isTe ? b.departmentTe : isHi ? (b.departmentHi || b.department) : (b.departmentName || b.department)}</span>
           {b.state && (
             <span className="px-2 py-0.5 rounded-full bg-[#E8E3DA] text-[#30364F] font-bold text-[10px]">
               {b.state}
@@ -98,88 +109,52 @@ export default function BenefitCard({ result }: { result: MatchResult }) {
         </div>
 
         {/* Benefit Description */}
-        <p className="text-xs text-[#3B3F4A] leading-relaxed mb-4">
-          {benefitText}
-        </p>
+        <div className="p-3 rounded-2xl bg-white border border-[#E8E3DA] mb-3 shadow-2xs">
+          <p className="text-xs text-[#151719] font-medium leading-relaxed">
+            {benefitText}
+          </p>
+        </div>
 
-        {/* Why matched criteria tag cloud */}
+        {/* Match Rationale Pill Box */}
         {result.matchedCriteria && result.matchedCriteria.length > 0 && (
-          <div className="mb-3 p-3 rounded-2xl bg-[#F1EDE4] border border-[#D8CDBB]">
-            <div className="text-[10px] font-bold text-[#151719] uppercase tracking-wider mb-1.5 flex items-center gap-1">
-              <ShieldCheck size={12} className="text-[#B85F45]" />
-              {te ? 'మీరు ఎందుకు అర్హులు:' : 'Why you matched:'}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {result.matchedCriteria.map((c, i) => (
-                <span 
-                  key={i} 
-                  className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-lg bg-white border border-[#D8CDBB] text-[#151719]"
-                >
-                  <Check size={11} className="text-[#B85F45] stroke-[3]" /> {c}
-                </span>
-              ))}
+          <div className="mb-3 px-3 py-2 rounded-xl bg-[#EAF4F0] border border-[#728477]/30 text-[11px] text-[#30364F] flex items-start gap-1.5">
+            <Check size={13} className="text-[#728477] mt-0.5 shrink-0" />
+            <div className="leading-snug">
+              <span className="font-bold text-[#151719]">{t('benefit.matched')}: </span>
+              <span>{result.matchedCriteria.slice(0, 2).join(', ')}</span>
             </div>
           </div>
         )}
 
-        {/* Missing / Unmatched info */}
         {result.missingInfo && result.missingInfo.length > 0 && (
-          <div className="mb-3 p-2.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900">
-            <div className="font-bold text-[10px] uppercase tracking-wider mb-1 flex items-center gap-1 text-amber-800">
-              <HelpCircle size={11} /> {te ? 'మరిన్ని వివరాలు అవసరం:' : 'Needs more information:'}
+          <div className="mb-3 px-3 py-2 rounded-xl bg-[#FEF3CD] border border-[#D99A24]/30 text-[11px] text-[#7C5B00] flex items-start gap-1.5">
+            <HelpCircle size={13} className="mt-0.5 shrink-0 text-[#D99A24]" />
+            <div className="leading-snug">
+              <span className="font-bold">{t('benefit.missingInfo')}: </span>
+              <span>{result.missingInfo.slice(0, 2).join(', ')}</span>
             </div>
-            <ul className="list-disc list-inside space-y-0.5 text-[10.5px]">
-              {result.missingInfo.map((m, i) => (
-                <li key={i}>{m}</li>
-              ))}
-            </ul>
           </div>
         )}
 
-        {/* Unmatched reasons if present */}
-        {result.unmatchedCriteria && result.unmatchedCriteria.length > 0 && (
-          <div className="mb-3 p-2.5 rounded-2xl bg-rose-50/80 border border-rose-200/80 text-[11px] text-rose-900">
-            <div className="font-bold text-[10px] uppercase tracking-wider mb-1 flex items-center gap-1 text-rose-800">
-              <AlertCircle size={11} /> {te ? 'అర్హత లేని కారణం:' : 'Why not matched:'}
-            </div>
-            <ul className="list-disc list-inside space-y-0.5 text-[10.5px]">
-              {result.unmatchedCriteria.map((u, i) => (
-                <li key={i}>{u}</li>
-              ))}
-            </ul>
+        {/* Preparation Badges */}
+        <div className="grid grid-cols-2 gap-2 text-xs text-[#728477] mb-3 font-medium">
+          <div className="flex items-center gap-1.5 bg-white/70 px-2.5 py-1.5 rounded-xl border border-[#E8E3DA]">
+            <FileText size={13} className="text-[#30364F]" />
+            <span>{b.documents.length} {t('benefit.documents')}</span>
           </div>
-        )}
-
-        {/* Metadata Tiles */}
-        <div className="grid grid-cols-3 gap-2 mb-4 p-2.5 rounded-2xl bg-white border border-[#E8E3DA] text-[11px]">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[#728477] text-[10px] uppercase font-semibold">{t('benefit.documents')}</span>
-            <span className="font-bold text-[#151719] flex items-center gap-1">
-              <FileText size={12} className="text-[#B85F45]" /> {b.documents.length} Proofs
-            </span>
-          </div>
-          <div className="flex flex-col gap-0.5 border-x border-[#E8E3DA] px-2">
-            <span className="text-[#728477] text-[10px] uppercase font-semibold">{t('benefit.preparation')}</span>
-            <span className="font-bold text-[#151719] flex items-center gap-1">
-              <Clock size={12} className="text-[#D99A24]" /> {b.preparationTime}
-            </span>
-          </div>
-          <div className="flex flex-col gap-0.5 pl-1">
-            <span className="text-[#728477] text-[10px] uppercase font-semibold">{t('benefit.application')}</span>
-            <span className="font-bold text-[#151719] flex items-center gap-1">
-              <Monitor size={12} className="text-[#30364F]" />
-              <AppModeBadge mode={b.applicationMode} />
-            </span>
+          <div className="flex items-center gap-1.5 bg-white/70 px-2.5 py-1.5 rounded-xl border border-[#E8E3DA]">
+            <Clock size={13} className="text-[#B85F45]" />
+            <span>{b.preparationTime}</span>
           </div>
         </div>
       </div>
 
-      {/* Footer / Action Buttons */}
-      <div>
-        <div className="flex items-center justify-between mb-3 pt-2 border-t border-[#E8E3DA] text-[11px] text-[#728477]">
+      {/* Footer Meta & Action Row */}
+      <div className="pt-3 border-t border-[#E8E3DA]">
+        <div className="flex items-center justify-between text-[11px] text-[#728477] mb-3">
           <div className="flex items-center gap-1.5">
             <Calendar size={12} />
-            <span>{te ? 'ధృవీకరించబడింది:' : 'Verified:'} {b.lastVerified}</span>
+            <span className="truncate max-w-[190px]">{deadlineLabel}</span>
           </div>
           <div className="mt-0.5">
             <EffortIndicator level={b.effortLevel} />
@@ -188,19 +163,29 @@ export default function BenefitCard({ result }: { result: MatchResult }) {
 
         {/* Action button row */}
         <div className="grid grid-cols-2 gap-2 mb-2">
-          {hasOfficialUrl ? (
+          {hasAppUrl ? (
             <a
               href={b.officialApplicationUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#D8CDBB] hover:border-[#151719] text-[#151719] font-bold text-xs transition-all shadow-2xs"
             >
-              <span>{te ? 'అధికారిక సైట్' : 'Official site'}</span>
-              <ExternalLink size={12} />
+              <span className="truncate">{isTe ? 'అధికారిక దరఖాస్తు' : isHi ? 'आधिकारिक आवेदन' : 'Open application'}</span>
+              <ExternalLink size={12} className="shrink-0" />
+            </a>
+          ) : hasInfoUrl ? (
+            <a
+              href={b.officialInfoUrl || b.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#D8CDBB] hover:border-[#151719] text-[#151719] font-bold text-xs transition-all shadow-2xs"
+            >
+              <span className="truncate">{isTe ? 'అధికారిక సమాచారం' : isHi ? 'आधिकारिक जानकारी' : 'Official info'}</span>
+              <ExternalLink size={12} className="shrink-0" />
             </a>
           ) : (
             <span className="inline-flex items-center justify-center px-2 py-2 rounded-xl bg-[#F1EDE4] text-[#728477] text-[10px] font-semibold text-center leading-tight">
-              {te ? 'అధికారిక విభాగాన్ని సంప్రదించండి' : 'Check dept directly'}
+              Check the official department: {b.departmentName || b.department}
             </span>
           )}
 
@@ -216,12 +201,12 @@ export default function BenefitCard({ result }: { result: MatchResult }) {
             {isTracked || justTracked ? (
               <>
                 <BookmarkCheck size={13} className="text-[#728477]" />
-                <span>{te ? 'ట్రాక్ చేయబడింది' : 'Tracked'}</span>
+                <span>{isTe ? 'ట్రాక్ చేయబడింది' : isHi ? 'ट्रैक किया गया' : 'Tracked'}</span>
               </>
             ) : (
               <>
                 <BookmarkPlus size={13} />
-                <span>{te ? 'ట్రాక్ చేయండి' : 'Track this'}</span>
+                <span>{isTe ? 'ట్రాక్ చేయండి' : isHi ? 'ट्रैक करें' : 'Track this'}</span>
               </>
             )}
           </button>
